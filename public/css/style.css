@@ -1,0 +1,43 @@
+body {
+  margin: 0;
+  font-family: Arial;
+}
+
+#map {
+  height: 100vh;
+  width: 100%;
+}
+
+/* Username box UI */
+.username-box {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+
+  background: rgba(0,0,0,0.7);
+  padding: 8px 12px;
+  border-radius: 8px;
+
+  display: flex;
+  gap: 6px;
+}
+
+.username-box input {
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: none;
+}
+
+.username-box button {
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+/* (Optional) hide leaflet attribution in dev */
+.leaflet-control-attribution{
+  display:none !important;
+}
