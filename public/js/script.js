@@ -1,30 +1,31 @@
 const socket = io("http://localhost:3000");
 
-// username PER TAB ONLY
-let username = sessionStorage.getItem("username") || "Guest";
 
-// store party info
-let partyCode = null;
-let partyUsers = [];
+// ================= USERNAME =================
+let username = sessionStorage.getItem("username");
 
+if (!username || username === "Guest") {
+  username = prompt("Enter your name")?.trim();
 
-function saveName() {
-  username = document.getElementById("username").value || "Guest";
+  if (!username) username = "Guest";
+
   sessionStorage.setItem("username", username);
-  socket.emit("register-user", username);
-
-  if (markers[socket.id]) {
-    markers[socket.id].bindTooltip(`You (${username})`);
-  }
 }
 
-// register immediately on load too
 socket.emit("register-user", username);
 
 
-// ===================
-// MAP
-// ===================
+
+// ================= STATE =================
+let partyCode = null;
+let partyUsers = [];
+let lastPosition = null;
+
+const markers = {};
+let centered = false;
+
+
+// ================= MAP =================
 const map = L.map("map", { attributionControl: false }).setView([20, 0], 3);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -32,15 +33,14 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 
-// ===================
-// ICON COLORS — FIXED
-// ===================
-const iconColors = ["red", "blue", "green", "gold", "violet", "orange"];
+// =============== COLOR HASH (LOCKED PER USER) ===============
+function hashColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++)
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
 
-function getColorFromId(id) {
-  return iconColors[
-    [...id].reduce((a, c) => a + c.charCodeAt(0), 0) % iconColors.length
-  ];
+  const colors = ["red", "blue", "green", "gold", "violet", "orange"];
+  return colors[Math.abs(hash) % colors.length];
 }
 
 function getIcon(color) {
@@ -55,32 +55,55 @@ function getIcon(color) {
 }
 
 
-const markers = {};
-let firstUpdate = true;
-
-
-
-// ===================
-// SEND GPS CONTINUOUSLY
-// ===================
+// ================= GPS (ALWAYS DRAW YOUR MARKER) =================
 if (navigator.geolocation) {
   navigator.geolocation.watchPosition((pos) => {
-    socket.emit("send-location", {
+
+    lastPosition = {
       latitude: pos.coords.latitude,
       longitude: pos.coords.longitude
-    });
+    };
+
+    // center once
+    if (!centered) {
+      centered = true;
+      map.setView([lastPosition.latitude, lastPosition.longitude], 16);
+    }
+
+    // 🔵 ALWAYS show your own marker — even without party
+    drawMarker(socket.id, username, lastPosition.latitude, lastPosition.longitude);
+
+    // 🔵 Only send to others IF inside party
+    if (partyCode) socket.emit("send-location", lastPosition);
+
   });
 }
 
 
 
-// ===================
-// PARTY FUNCTIONS
-// ===================
+// 🔵 DRAW MARKER FUNCTION (DE-DUPED)
+function drawMarker(id, name, lat, lng) {
 
-window.createParty = () => {
-  socket.emit("createParty", username);
-};
+  const color = hashColor(id);
+
+  // small jitter for others so stacked pins are visible
+  const jitter = id === socket.id ? 0 : (Math.random() - 0.5) * 0.00025;
+
+  lat += jitter;
+  lng += jitter;
+
+  if (!markers[id]) {
+    markers[id] = L.marker([lat, lng], { icon: getIcon(color) }).addTo(map);
+    markers[id].bindTooltip(id === socket.id ? `You (${name})` : name);
+  } else {
+    markers[id].setLatLng([lat, lng]);
+  }
+}
+
+
+
+// ================= PARTY BUTTONS =================
+window.createParty = () => socket.emit("createParty", username);
 
 window.joinParty = () => {
   const code = prompt("Enter party code");
@@ -90,98 +113,73 @@ window.joinParty = () => {
 
 
 
-// ===================
-// PARTY EVENTS
-// ===================
+// ================= PARTY EVENTS =================
+socket.on("partyCreated", ({ partyCode: code, users }) => {
+  partyCode = code;
+  partyUsers = users;
 
-// When you CREATE a party
-socket.on("partyCreated", (data) => {
-  partyCode = data.partyCode;
-  partyUsers = data.users;
+  uiUpdate("Hosting Party", partyCode);
 
-  alert(`🎉 Party Created!\nShare this code:\n\n${partyCode}`);
-  console.log("Party users:", partyUsers);
+  toast(`🎉 Party created. Code: ${partyCode}`);
+
+  if (lastPosition) socket.emit("send-location", lastPosition);
 });
 
+socket.on("partyJoined", ({ partyCode: code, users }) => {
+  partyCode = code;
+  partyUsers = users;
 
-// When you JOIN a party
-socket.on("partyJoined", (data) => {
-  partyCode = data.partyCode;
-  partyUsers = data.users;
+  uiUpdate("In Party", partyCode);
 
-  alert(`🎉 Joined Party\nCode: ${partyCode}`);
-  console.log("Party users:", partyUsers);
+  toast(`🙋 Joined party ${partyCode}`);
+
+  if (lastPosition) socket.emit("send-location", lastPosition);
 });
 
-
-// Errors
-socket.on("partyError", (msg) => alert(msg));
-
-
-// Someone else joined your party
 socket.on("userJoined", (user) => {
   partyUsers.push(user);
-  console.log("User joined:", user);
+  toast(`🟢 ${user.username} joined your party`);
 });
 
+socket.on("partyError", msg => toast("❌ " + msg));
 
-// ===================
-// RECEIVE LOCATIONS — PARTY ONLY
-// ===================
+
+
+// ================= RECEIVE LIVE LOCATIONS =================
 socket.on("receive-location", (data) => {
   const { id, username, latitude, longitude } = data;
-
-  const color = getColorFromId(id);
-
-  if (!markers[id]) {
-    markers[id] = L.marker([latitude, longitude], {
-      icon: getIcon(color)
-    }).addTo(map);
-
-    markers[id].bindTooltip(
-      id === socket.id ? `You (${username})` : username
-    );
-  } 
-  else {
-    markers[id].setLatLng([latitude, longitude]);
-  }
-
-  if (id === socket.id && firstUpdate) {
-    map.setView([latitude, longitude], 16);
-    firstUpdate = false;
-  }
+  drawMarker(id, username, latitude, longitude);
 });
 
 
 
-// ===================
-// HANDLE DISCONNECT
-// ===================
+// ================= DISCONNECT =================
 socket.on("user-disconnected", (id) => {
-  if (markers[id]) {
-    map.removeLayer(markers[id]);
-    delete markers[id];
-  }
-
-  partyUsers = partyUsers.filter(u => u.id !== id);
+  if (markers[id]) map.removeLayer(markers[id]);
+  delete markers[id];
 });
 
-socket.on("partyCreated", (data) => {
-  partyCode = data.partyCode;
-  partyUsers = data.users;
 
-  document.getElementById("status").innerText = "Hosting Party";
-  document.getElementById("code").innerText = partyCode;
 
-  alert(`🎉 Party Created!\nShare this code:\n\n${partyCode}`);
-});
+// =================== UI HELPERS ===================
+function uiUpdate(status, code) {
+  document.getElementById("status").innerText = status;
+  document.getElementById("code").innerText = code;
+}
 
-socket.on("partyJoined", (data) => {
-  partyCode = data.partyCode;
-  partyUsers = data.users;
+function toast(msg) {
+  toast(msg);   // 🔵 later we replace with pretty popup UI
+}
 
-  document.getElementById("status").innerText = "In Party";
-  document.getElementById("code").innerText = partyCode;
+function toast(msg) {
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.innerText = msg;
+  document.body.appendChild(t);
 
-  alert(`🎉 Joined Party\nCode: ${partyCode}`);
-});
+  setTimeout(()=> t.classList.add("show"), 50);
+  setTimeout(()=> {
+    t.classList.remove("show");
+    setTimeout(()=> t.remove(), 300);
+  }, 3000);
+}

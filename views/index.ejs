@@ -7,13 +7,37 @@
 
   <link rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  background: #0f172a;
+  color: white;
+  padding: 12px 18px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,.4);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: .3s;
+  font-family: system-ui;
+  z-index: 9999;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+
 </head>
 
 <body>
 
-  <div class="username-box">
-    <input id="username" placeholder="Enter your name" />
-    <button onclick="saveName()">Save</button>
+  <div style="position:fixed; top:10px; left:10px; z-index:2000; 
+              background:#000000b5; padding:10px 14px; border-radius:10px;
+              color:white; font-family:sans-serif;">
+    <p><strong>Status:</strong> <span id="status">Not in party</span></p>
+    <p><strong>Party Code:</strong> <span id="code">—</span></p>
 
     <button onclick="createParty()">Create Party</button>
     <button onclick="joinParty()">Join Party</button>
