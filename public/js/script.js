@@ -6,14 +6,11 @@ let username = sessionStorage.getItem("username");
 
 if (!username || username === "Guest") {
   username = prompt("Enter your name")?.trim();
-
   if (!username) username = "Guest";
-
   sessionStorage.setItem("username", username);
 }
 
 socket.emit("register-user", username);
-
 
 
 // ================= STATE =================
@@ -24,6 +21,9 @@ let lastPosition = null;
 const markers = {};
 let centered = false;
 
+const badge = document.getElementById("statusBadge");
+const codeBox = document.getElementById("code");
+
 
 // ================= MAP =================
 const map = L.map("map", { attributionControl: false }).setView([20, 0], 3);
@@ -33,7 +33,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 
-// =============== COLOR HASH (LOCKED PER USER) ===============
+// =============== COLOR HASH ===============
 function hashColor(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++)
@@ -55,7 +55,7 @@ function getIcon(color) {
 }
 
 
-// ================= GPS (ALWAYS DRAW YOUR MARKER) =================
+// ================= GPS =================
 if (navigator.geolocation) {
   navigator.geolocation.watchPosition((pos) => {
 
@@ -64,30 +64,24 @@ if (navigator.geolocation) {
       longitude: pos.coords.longitude
     };
 
-    // center once
     if (!centered) {
       centered = true;
       map.setView([lastPosition.latitude, lastPosition.longitude], 16);
     }
 
-    // 🔵 ALWAYS show your own marker — even without party
     drawMarker(socket.id, username, lastPosition.latitude, lastPosition.longitude);
 
-    // 🔵 Only send to others IF inside party
     if (partyCode) socket.emit("send-location", lastPosition);
 
   });
 }
 
 
-
-// 🔵 DRAW MARKER FUNCTION (DE-DUPED)
+// ================= MARKER DRAW =================
 function drawMarker(id, name, lat, lng) {
 
   const color = hashColor(id);
-
-  // small jitter for others so stacked pins are visible
-  const jitter = id === socket.id ? 0 : (Math.random() - 0.5) * 0.00025;
+  const jitter = id === socket.id ? 0 : (Math.random()-0.5)*0.00025;
 
   lat += jitter;
   lng += jitter;
@@ -101,7 +95,6 @@ function drawMarker(id, name, lat, lng) {
 }
 
 
-
 // ================= PARTY BUTTONS =================
 window.createParty = () => socket.emit("createParty", username);
 
@@ -112,15 +105,15 @@ window.joinParty = () => {
 };
 
 
-
 // ================= PARTY EVENTS =================
 socket.on("partyCreated", ({ partyCode: code, users }) => {
   partyCode = code;
   partyUsers = users;
 
-  uiUpdate("Hosting Party", partyCode);
+  setBadge("Hosting Party", "green");
+  codeBox.innerText = code;
 
-  toast(`🎉 Party created. Code: ${partyCode}`);
+  notify(`🎉 Party created — Code: ${code}`);
 
   if (lastPosition) socket.emit("send-location", lastPosition);
 });
@@ -129,28 +122,26 @@ socket.on("partyJoined", ({ partyCode: code, users }) => {
   partyCode = code;
   partyUsers = users;
 
-  uiUpdate("In Party", partyCode);
+  setBadge("In Party", "blue");
+  codeBox.innerText = code;
 
-  toast(`🙋 Joined party ${partyCode}`);
+  notify(`🙋 Joined party ${code}`);
 
   if (lastPosition) socket.emit("send-location", lastPosition);
 });
 
 socket.on("userJoined", (user) => {
   partyUsers.push(user);
-  toast(`🟢 ${user.username} joined your party`);
+  notify(`🟢 ${user.username} joined your party`);
 });
 
-socket.on("partyError", msg => toast("❌ " + msg));
+socket.on("partyError", msg => notify("❌ " + msg));
 
 
-
-// ================= RECEIVE LIVE LOCATIONS =================
+// ================= LIVE LOCATION FROM OTHERS =================
 socket.on("receive-location", (data) => {
-  const { id, username, latitude, longitude } = data;
-  drawMarker(id, username, latitude, longitude);
+  drawMarker(data.id, data.username, data.latitude, data.longitude);
 });
-
 
 
 // ================= DISCONNECT =================
@@ -160,26 +151,21 @@ socket.on("user-disconnected", (id) => {
 });
 
 
-
-// =================== UI HELPERS ===================
-function uiUpdate(status, code) {
-  document.getElementById("status").innerText = status;
-  document.getElementById("code").innerText = code;
+// ================= UI HELPERS =================
+function setBadge(text, style){
+  badge.innerText = text;
+  badge.className = "badge " + style;
 }
 
-function toast(msg) {
-  toast(msg);   // 🔵 later we replace with pretty popup UI
-}
-
-function toast(msg) {
+function notify(msg){
   const t = document.createElement("div");
   t.className = "toast";
   t.innerText = msg;
   document.body.appendChild(t);
 
-  setTimeout(()=> t.classList.add("show"), 50);
+  setTimeout(()=> t.classList.add("show"),50);
   setTimeout(()=> {
     t.classList.remove("show");
-    setTimeout(()=> t.remove(), 300);
+    setTimeout(()=> t.remove(),300);
   }, 3000);
 }

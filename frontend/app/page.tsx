@@ -4,7 +4,10 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import gsap from "gsap";
 import ScrollTrigger from "gsap/ScrollTrigger";
-import MiniMapDemo from "./components/MiniMapDemo";
+import MiniMapDemo from "../components/MiniMapDemo";
+import { Sidebar } from "@/components/ui/sidebar";
+import { PartySidebar } from "@/components/ui/party-sidebar";
+
 
 
 gsap.registerPlugin(ScrollTrigger);
