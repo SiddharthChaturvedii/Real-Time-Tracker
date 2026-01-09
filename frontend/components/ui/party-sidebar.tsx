@@ -1,71 +1,64 @@
 "use client";
 
-import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
+import { Sidebar, SidebarItem, SidebarSection } from "@/components/ui/sidebar";
 import { LogOut } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useState } from "react";
 
-interface Member {
+export interface Member {
   id: string;
   username: string;
-
+  color: string;
+  online: boolean;
 }
 
 export function PartySidebar({
+  open,
+  onClose,
   partyCode,
   members,
   selfId,
   onLeave,
 }: {
+  open: boolean;
+  onClose: () => void;
   partyCode: string;
   members: Member[];
   selfId: string;
   onLeave: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className={cn("flex h-screen bg-neutral-900")}>
-      <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className="gap-6">
+    <Sidebar open={open} onClose={onClose}>
+      <SidebarSection title="Party">
+        <div className="text-white font-mono text-sm">
+          Code: {partyCode || "—"}
+        </div>
+      </SidebarSection>
 
-          <div>
-            <h2 className="text-white font-bold text-lg">
-              Party Code: {partyCode}
-            </h2>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            {members.map((m) => (
-              <SidebarLink
-                key={m.id}
-                link={{
-                  label: `${m.username}${m.id === selfId ? " (You)" : ""}`,
-                  href: "#",
-                  icon: (
-                    <div
-                      className="h-3 w-3 rounded-full bg-blue-400"
-                      
-                    />
-                  ),
-                }}
+      <SidebarSection title="Members">
+        <div className="flex flex-col gap-1">
+          {members.map(m => (
+            <div
+              key={m.id}
+              className="flex items-center gap-2 px-2 py-1 text-sm text-white"
+            >
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ background: m.color }}
               />
-            ))}
-          </div>
+              <span>
+                {m.username}
+                {m.id === selfId && " (You)"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </SidebarSection>
 
-          <div className="mt-auto">
-            <SidebarLink
-              link={{
-                label: "Leave Party",
-                href: "#",
-                icon: <LogOut className="h-4 w-4 text-red-500" />,
-              }}
-              className="text-red-400"
-            />
-          </div>
-
-        </SidebarBody>
-      </Sidebar>
-    </div>
+      <div className="mt-auto">
+        <SidebarItem danger onClick={onLeave}>
+          <LogOut size={16} />
+          Leave Party
+        </SidebarItem>
+      </div>
+    </Sidebar>
   );
 }
