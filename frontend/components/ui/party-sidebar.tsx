@@ -2,14 +2,10 @@
 
 import { Sidebar, SidebarItem, SidebarSection } from "@/components/ui/sidebar";
 import { LogOut } from "lucide-react";
-import { socket } from "@/lib/socket";
-
 
 export interface Member {
   id: string;
   username: string;
-  color: string;
-  online: boolean;
 }
 
 export function PartySidebar({
@@ -29,62 +25,36 @@ export function PartySidebar({
 }) {
   return (
     <Sidebar open={open} onClose={onClose}>
-      {/* PARTY INFO */}
-      <SidebarSection title="Party">
-        <div className="text-white font-mono text-sm">
-          Code:{" "}
-          <span className="text-cyan-300">
-            {partyCode || "—"}
-          </span>
+      <SidebarSection title="Party Code">
+        <div className="font-mono text-white">
+          {partyCode || "—"}
         </div>
       </SidebarSection>
 
-      {/* MEMBERS */}
       <SidebarSection title="Members">
         {members.length === 0 ? (
-          <p className="text-sm text-neutral-400">
-            No members yet
-          </p>
+          <p className="text-sm text-neutral-400">No members</p>
         ) : (
-          <div className="flex flex-col gap-1">
+          <ul className="space-y-1">
             {members.map((m) => (
-              <div
+              <li
                 key={m.id}
-                className="flex items-center gap-2 px-2 py-1 rounded-md text-sm text-white"
+                className="text-sm text-white"
               >
-                {/* ONLINE DOT */}
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: m.color }}
-                />
-
-                <span className="truncate">
-                  {m.username}
-                  {m.id === selfId && (
-                    <span className="text-neutral-400"> (You)</span>
-                  )}
-                </span>
-              </div>
+                {m.username}
+                {m.id === selfId && " (You)"}
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </SidebarSection>
 
-      {/* ACTIONS */}
       <div className="mt-auto pt-4">
-        <SidebarItem
-            danger
-            onClick={() => {
-              socket.emit("leaveParty");
-              onClose();
-            }}
-          >
-
-  <LogOut size={16} />
-  Leave Party
-</SidebarItem>
-        </div>
+        <SidebarItem danger onClick={onLeave}>
+          <LogOut size={16} />
+          Leave Party
+        </SidebarItem>
+      </div>
     </Sidebar>
   );
 }
-
