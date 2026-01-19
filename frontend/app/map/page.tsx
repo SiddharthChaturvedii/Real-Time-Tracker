@@ -23,6 +23,14 @@ export default function MapPage() {
   const [members, setMembers] = useState<PartyUser[]>([]);
   const [selfId, setSelfId] = useState("");
   const [username, setUsername] = useState("");
+  const [inParty, setInParty] = useState(false); // 🔑 authoritative flag
+
+  /* ---------- RESET (single source of truth) ---------- */
+  function resetPartyState() {
+    setPartyCode("");
+    setMembers([]);
+    setInParty(false);
+  }
 
   /* ---------- USERNAME ---------- */
   useEffect(() => {
@@ -44,6 +52,7 @@ export default function MapPage() {
     socket.on("partyJoined", ({ partyCode, users }: PartyJoinedPayload) => {
       setPartyCode(partyCode);
       setMembers(users);
+      setInParty(true);
     });
 
     socket.on("userJoined", (user: PartyUser) => {
@@ -64,8 +73,8 @@ export default function MapPage() {
 
   return (
     <div className="relative h-screen w-screen bg-black text-white">
-      {/* 🗺 MAP */}
-      {partyCode && (
+      {/* 🗺 MAP (mount ONLY when truly in party) */}
+      {inParty && (
         <div className="absolute inset-0 z-0">
           <LiveMap username={username} />
         </div>
@@ -76,14 +85,14 @@ export default function MapPage() {
         <h1 className="font-semibold">LiveTrack</h1>
 
         <span className="text-xs px-2 py-1 rounded bg-green-600/20 text-green-400">
-          {partyCode ? "IN PARTY" : "NOT IN PARTY"}
+          {inParty ? "IN PARTY" : "NOT IN PARTY"}
         </span>
 
         <span className="text-xs font-mono text-white/80">
-          {partyCode ? `Code: ${partyCode}` : ""}
+          {inParty ? `Code: ${partyCode}` : ""}
         </span>
 
-        {!partyCode && (
+        {!inParty && (
           <>
             <button
               className="ml-4 bg-white text-black px-3 py-1 rounded text-sm"
@@ -109,10 +118,13 @@ export default function MapPage() {
           </>
         )}
 
-        {partyCode && (
+        {inParty && (
           <button
             className="ml-auto bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
-            onClick={() => socket.emit("leaveParty")}
+            onClick={() => {
+              socket.emit("leaveParty");
+              resetPartyState(); // 🔥 critical
+            }}
           >
             Leave
           </button>
