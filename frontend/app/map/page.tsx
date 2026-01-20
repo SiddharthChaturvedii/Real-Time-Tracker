@@ -19,20 +19,12 @@ interface PartyJoinedPayload {
 }
 
 export default function MapPage() {
-  const [partyCode, setPartyCode] = useState("");
+  const [partyCode, setPartyCode] = useState<string | null>(null);
   const [members, setMembers] = useState<PartyUser[]>([]);
   const [selfId, setSelfId] = useState("");
   const [username, setUsername] = useState("");
-  const [inParty, setInParty] = useState(false);
 
-  /* ---------- RESET ---------- */
-  function resetPartyState() {
-    setPartyCode("");
-    setMembers([]);
-    setInParty(false);
-  }
-
-  /* ---------- USERNAME ---------- */
+  /* ---------- USERNAME (client-only, stable) ---------- */
   useEffect(() => {
     let name = sessionStorage.getItem("username");
     if (!name) {
@@ -43,45 +35,51 @@ export default function MapPage() {
     socket.emit("register-user", name);
   }, []);
 
-  /* ---------- SOCKET ---------- */
+  /* ---------- SOCKET EVENTS ---------- */
   useEffect(() => {
-    socket.on("connect", () => {
+    const onConnect = () => {
       setSelfId(socket.id || "");
-    });
+    };
 
-    socket.on("partyJoined", ({ partyCode, users }: PartyJoinedPayload) => {
-      setPartyCode(partyCode);   // 🔑 source of truth
+    const onPartyJoined = ({ partyCode, users }: PartyJoinedPayload) => {
+      setPartyCode(partyCode);
       setMembers(users);
-      setInParty(true);
-    });
+    };
 
-    socket.on("userJoined", (user: PartyUser) => {
+    const onUserJoined = (user: PartyUser) => {
       setMembers((prev) => [...prev, user]);
-    });
+    };
 
-    socket.on("user-disconnected", (id: string) => {
+    const onUserDisconnected = (id: string) => {
       setMembers((prev) => prev.filter((u) => u.id !== id));
-    });
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("partyJoined", onPartyJoined);
+    socket.on("userJoined", onUserJoined);
+    socket.on("user-disconnected", onUserDisconnected);
 
     return () => {
-      socket.off("connect");
-      socket.off("partyJoined");
-      socket.off("userJoined");
-      socket.off("user-disconnected");
+      socket.off("connect", onConnect);
+      socket.off("partyJoined", onPartyJoined);
+      socket.off("userJoined", onUserJoined);
+      socket.off("user-disconnected", onUserDisconnected);
     };
   }, []);
 
-  return (
-    <div className="relative h-screen w-screen bg-black text-white">
-      {/* 🗺 MAP — MOUNT ONLY WHEN PARTY EXISTS */}
-      {partyCode && (
-        <div className="absolute inset-0 z-0">
-          <LiveMap username={username} />
-        </div>
-      )}
+  const inParty = Boolean(partyCode);
 
+  /* ---------- LEAVE (authoritative reset) ---------- */
+  function leaveParty() {
+    socket.emit("leaveParty");
+    setPartyCode(null);
+    setMembers([]);
+  }
+
+  return (
+    <div className="h-screen w-screen bg-black text-white flex flex-col">
       {/* 🧭 NAVBAR */}
-      <div className="absolute top-0 left-0 right-0 z-20 h-14 bg-black/70 backdrop-blur flex items-center px-4 gap-4 border-b border-white/10">
+      <div className="h-14 flex-shrink-0 bg-black/70 backdrop-blur flex items-center px-4 gap-4 border-b border-white/10 z-10">
         <h1 className="font-semibold">LiveTrack</h1>
 
         <span className="text-xs px-2 py-1 rounded bg-green-600/20 text-green-400">
@@ -121,14 +119,16 @@ export default function MapPage() {
         {inParty && (
           <button
             className="ml-auto bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
-            onClick={() => {
-              socket.emit("leaveParty");
-              resetPartyState();
-            }}
+            onClick={leaveParty}
           >
             Leave
           </button>
         )}
+      </div>
+
+      {/* 🗺 MAP AREA (real height, no overlap) */}
+      <div className="flex-1 relative">
+        {inParty && <LiveMap username={username} />}
       </div>
     </div>
   );

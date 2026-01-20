@@ -105,21 +105,22 @@ io.on("connection", (socket) => {
   });
 
   // ---------- LOCATION ----------
-  socket.on("send-location", ({ latitude, longitude }) => {
-    const code = userParty[socket.id];
-    if (!code) return;
+  socket.on("send-location", ({ latitude, longitude, username }) => {
+  const code = userParty[socket.id];
+  if (!code) return;
 
-    // store latest location
-    userLocations[socket.id] = { latitude, longitude };
+  // store latest location
+  userLocations[socket.id] = { latitude, longitude };
 
-    // broadcast to everyone in party
-    io.to(code).emit("receive-location", {
-       id: socket.id,
-       username: data.username || users[socket.id],
-       latitude: data.latitude,
-       longitude: data.longitude,
-      });
-    });
+  // broadcast to everyone in party
+  io.to(code).emit("receive-location", {
+    id: socket.id,
+    username: username || users[socket.id],
+    latitude,
+    longitude,
+  });
+});
+
      
 
   // ---------- LEAVE PARTY ----------
