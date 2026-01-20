@@ -23,9 +23,9 @@ export default function MapPage() {
   const [members, setMembers] = useState<PartyUser[]>([]);
   const [selfId, setSelfId] = useState("");
   const [username, setUsername] = useState("");
-  const [inParty, setInParty] = useState(false); // 🔑 authoritative flag
+  const [inParty, setInParty] = useState(false);
 
-  /* ---------- RESET (single source of truth) ---------- */
+  /* ---------- RESET ---------- */
   function resetPartyState() {
     setPartyCode("");
     setMembers([]);
@@ -50,7 +50,7 @@ export default function MapPage() {
     });
 
     socket.on("partyJoined", ({ partyCode, users }: PartyJoinedPayload) => {
-      setPartyCode(partyCode);
+      setPartyCode(partyCode);   // 🔑 source of truth
       setMembers(users);
       setInParty(true);
     });
@@ -73,8 +73,8 @@ export default function MapPage() {
 
   return (
     <div className="relative h-screen w-screen bg-black text-white">
-      {/* 🗺 MAP (mount ONLY when truly in party) */}
-      {inParty && (
+      {/* 🗺 MAP — MOUNT ONLY WHEN PARTY EXISTS */}
+      {partyCode && (
         <div className="absolute inset-0 z-0">
           <LiveMap username={username} />
         </div>
@@ -123,7 +123,7 @@ export default function MapPage() {
             className="ml-auto bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
             onClick={() => {
               socket.emit("leaveParty");
-              resetPartyState(); // 🔥 critical
+              resetPartyState();
             }}
           >
             Leave

@@ -114,12 +114,13 @@ io.on("connection", (socket) => {
 
     // broadcast to everyone in party
     io.to(code).emit("receive-location", {
-      id: socket.id,
-      username: users[socket.id],
-      latitude,
-      longitude,
+       id: socket.id,
+       username: data.username || users[socket.id],
+       latitude: data.latitude,
+       longitude: data.longitude,
+      });
     });
-  });
+     
 
   // ---------- LEAVE PARTY ----------
   socket.on("leaveParty", () => {

@@ -16,7 +16,6 @@ interface LocationPayload {
   longitude: number;
 }
 
-
 function getIcon(color: string) {
   if (!iconCache[color]) {
     iconCache[color] = L.icon({
@@ -60,6 +59,7 @@ export default function LiveMap({ username }: LiveMapProps) {
   const centeredRef = useRef(false);
   const usernameRef = useRef(username);
 
+  /* keep latest username without re-running map */
   useEffect(() => {
     usernameRef.current = username;
   }, [username]);
@@ -86,6 +86,7 @@ export default function LiveMap({ username }: LiveMapProps) {
     /* ---------------- GPS ---------------- */
     const watchId = navigator.geolocation.watchPosition((pos) => {
       if (!socket.id || !mapRef.current) return;
+      if (!usernameRef.current) return; // 🔑 guard
 
       const { latitude, longitude } = pos.coords;
 
@@ -101,7 +102,12 @@ export default function LiveMap({ username }: LiveMapProps) {
         longitude
       );
 
-      socket.emit("send-location", { latitude, longitude });
+      // 🔑 INCLUDE USERNAME
+      socket.emit("send-location", {
+        latitude,
+        longitude,
+        username: usernameRef.current,
+      });
     });
 
     /* ---------------- SOCKET EVENTS ---------------- */
@@ -114,7 +120,6 @@ export default function LiveMap({ username }: LiveMapProps) {
         data.longitude
       );
     });
-
 
     socket.on("user-disconnected", (id: string) => {
       const marker = markersRef.current[id];
@@ -176,3 +181,4 @@ export default function LiveMap({ username }: LiveMapProps) {
     />
   );
 }
+ 
