@@ -44,6 +44,17 @@ function removeUserFromParty(socket) {
   // delete party if empty
   if (parties[code].length === 0) {
     delete parties[code];
+
+  if (parties[code].length === 1) {
+    const remainingUser = parties[code][0];
+
+    io.to(code).emit("partyClosed");
+
+    delete userParty[remainingUser.id];
+    delete userLocations[remainingUser.id];
+    delete parties[code];
+}
+
   }
 }
 
@@ -110,7 +121,7 @@ io.on("connection", (socket) => {
   // ---------- LOCATION ----------
   socket.on("send-location", ({ latitude, longitude, username }) => {
   const code = userParty[socket.id];
-  if (!code) return;
+  if (!code || !parties[code]) return;
 
   // store latest location
   userLocations[socket.id] = { latitude, longitude };

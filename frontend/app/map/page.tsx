@@ -4,9 +4,7 @@ import { useEffect, useState } from "react";
 import { socket } from "@/lib/socket";
 import dynamic from "next/dynamic";
 
-const LiveMap = dynamic(() => import("./LiveMap"), {
-  ssr: false,
-});
+const LiveMap = dynamic(() => import("./LiveMap"), { ssr: false });
 
 interface PartyUser {
   id: string;
@@ -21,10 +19,9 @@ interface PartyJoinedPayload {
 export default function MapPage() {
   const [partyCode, setPartyCode] = useState<string | null>(null);
   const [members, setMembers] = useState<PartyUser[]>([]);
-  const [selfId, setSelfId] = useState("");
   const [username, setUsername] = useState("");
 
-  /* ---------- USERNAME (client-only, stable) ---------- */
+  /* ---------- USERNAME (CLIENT ONLY, SAFE) ---------- */
   useEffect(() => {
     let name = sessionStorage.getItem("username");
     if (!name) {
@@ -37,10 +34,6 @@ export default function MapPage() {
 
   /* ---------- SOCKET EVENTS ---------- */
   useEffect(() => {
-    const onConnect = () => {
-      setSelfId(socket.id || "");
-    };
-
     const onPartyJoined = ({ partyCode, users }: PartyJoinedPayload) => {
       setPartyCode(partyCode);
       setMembers(users);
@@ -54,13 +47,11 @@ export default function MapPage() {
       setMembers((prev) => prev.filter((u) => u.id !== id));
     };
 
-    socket.on("connect", onConnect);
     socket.on("partyJoined", onPartyJoined);
     socket.on("userJoined", onUserJoined);
     socket.on("user-disconnected", onUserDisconnected);
 
     return () => {
-      socket.off("connect", onConnect);
       socket.off("partyJoined", onPartyJoined);
       socket.off("userJoined", onUserJoined);
       socket.off("user-disconnected", onUserDisconnected);
@@ -69,7 +60,7 @@ export default function MapPage() {
 
   const inParty = Boolean(partyCode);
 
-  /* ---------- LEAVE (authoritative reset) ---------- */
+  /* ---------- LEAVE (HARD RESET, NO GHOST STATE) ---------- */
   function leaveParty() {
     socket.emit("leaveParty");
     setPartyCode(null);
@@ -126,9 +117,9 @@ export default function MapPage() {
         )}
       </div>
 
-      {/* 🗺 MAP AREA (real height, no overlap) */}
+      {/* 🗺 MAP — ALWAYS MOUNTED */}
       <div className="flex-1 relative">
-        {inParty && <LiveMap username={username} />}
+        <LiveMap username={username} />
       </div>
     </div>
   );
