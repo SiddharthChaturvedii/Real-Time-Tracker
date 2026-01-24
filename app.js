@@ -47,20 +47,13 @@ function removeUserFromParty(socket) {
   // 4️⃣ Notify remaining users
   io.to(code).emit("user-disconnected", socket.id);
 
-  // 5️⃣ DESTROY PARTY if <= 1 left
-  if (parties[code].length <= 1) {
-    console.log(`[PARTY] Closing party ${code} (not enough members)`);
-    // 🔒 Notify via ROOM (not individual IDs)
-    io.to(code).emit("partyClosed");
-
-    // Cleanup remaining user mappings
-    parties[code].forEach(u => {
-      delete userParty[u.id];
-      delete userLocations[u.id];
-    });
-
-    // Finally delete party
+  // 5️⃣ DESTROY PARTY if 0 left (Empty)
+  if (parties[code].length === 0) {
+    console.log(`[PARTY] Closing party ${code} (empty)`);
     delete parties[code];
+  } else {
+    // If users remain, just tell them someone left
+    // (We already did this in step 4, so we are good)
   }
 }
 

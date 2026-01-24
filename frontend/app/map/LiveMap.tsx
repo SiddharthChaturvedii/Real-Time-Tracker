@@ -120,15 +120,39 @@ export default function LiveMap({ username }: { username: string }) {
   ) {
     if (!mapRef.current) return;
 
+    // ----- Jitter/Spiral Logic for Overlaps -----
+    // Check if any other marker is at this EXACT location or very close
+    let finalLat = lat;
+    let finalLng = lng;
+    const existingIds = Object.keys(markersRef.current);
+
+    // Simple verification: if we find a collision, shift slightly based on ID hash
+    // This isn't perfect spiderfying but solves "standing on single point"
+    const isColliding = existingIds.some(existingId => {
+      if (existingId === id) return false;
+      const marker = markersRef.current[existingId];
+      const pos = marker.getLatLng();
+      const dist = Math.abs(pos.lat - lat) + Math.abs(pos.lng - lng);
+      return dist < 0.00005; // ~5 meters
+    });
+
+    if (isColliding) {
+      // Deterministic offset based on ID char codes
+      const offset = (id.charCodeAt(0) % 5) * 0.0001;
+      const angle = (id.charCodeAt(id.length - 1) % 8) * (Math.PI / 4);
+      finalLat += Math.sin(angle) * (0.00015 + offset);
+      finalLng += Math.cos(angle) * (0.00015 + offset);
+    }
+
     const icon = getIcon(hashColor(id));
     const label = id === socket.id ? `You (${name})` : name;
 
     if (!markersRef.current[id]) {
-      markersRef.current[id] = L.marker([lat, lng], { icon })
+      markersRef.current[id] = L.marker([finalLat, finalLng], { icon })
         .addTo(mapRef.current)
         .bindTooltip(label);
     } else {
-      markersRef.current[id].setLatLng([lat, lng]);
+      markersRef.current[id].setLatLng([finalLat, finalLng]);
       markersRef.current[id].setTooltipContent(label);
     }
   }
