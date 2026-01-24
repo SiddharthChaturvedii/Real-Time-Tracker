@@ -110,8 +110,9 @@ io.on("connection", (socket) => {
     const partyCode = partyManager.updateLocation(socket.id, latitude, longitude);
 
     if (partyCode) {
-      // Broadcast to party (excluding sender)
-      socket.to(partyCode).emit("receive-location", {
+      // Broadcast to EVERYONE in party (including sender - helpful for debugging, though frontend ignores self)
+      // Using io.to ensures it hits all sockets in the room 100%
+      io.to(partyCode).emit("receive-location", {
         id: socket.id,
         username: username || partyManager.getUser(socket.id),
         latitude,
@@ -127,7 +128,7 @@ io.on("connection", (socket) => {
 
     if (result && result.partyCode) {
       socket.leave(result.partyCode);
-      socket.emit("partyClosed"); // Or just clear local state
+      socket.emit("partyLeft"); // Notify SELF
 
       // Notify others
       socket.to(result.partyCode).emit("user-disconnected", socket.id);
@@ -135,6 +136,37 @@ io.on("connection", (socket) => {
       if (result.partyClosed) {
         socket.to(result.partyCode).emit("partyClosed");
       }
+    }
+  });
+
+  // ---------- KICK ----------
+  socket.on("kick-user", ({ userId, partyCode }) => {
+    // Note: userId passed from frontend is the socket.id of the target
+    const result = partyManager.kickUser(socket.id, userId);
+
+    if (result.error) {
+      socket.emit("partyError", result.error);
+      return;
+    }
+
+    if (result.success && result.partyCode) {
+      // Notify the kicked user
+      // We need to access the kicked socket to make it leave the room?
+      // We can't force `socket.leave` for ANOTHER socket easily without looking it up.
+      // But `partyManager` already cleaned up the state.
+      // We can emit to the specific socket ID using `io.to(userId)`
+
+      io.to(userId).emit("partyLeft"); // Reset their UI
+      io.to(userId).emit("partyError", "You were kicked from the party");
+
+      // Make the socket leave the room (if we can find it)
+      const targetSocket = io.sockets.sockets.get(userId);
+      if (targetSocket) {
+        targetSocket.leave(result.partyCode);
+      }
+
+      // Notify others that user is gone
+      socket.to(result.partyCode).emit("user-disconnected", userId);
     }
   });
 

@@ -92,6 +92,39 @@ class PartyManager {
         return { partyCode: code, partyClosed, remainingMembers: this.parties[code]?.members || [] };
     }
 
+    kickUser(creatorSocketId, targetSocketId) {
+        const partyCode = this.userParty[creatorSocketId];
+        if (!partyCode) return { error: "You are not in a party" };
+
+        const party = this.parties[partyCode];
+        if (!party) return { error: "Party not found" };
+
+        // Verify creator
+        // In createParty we stored creator username, but we need to verify socket ID or just trust the username match?
+        // Better: We should store creator socket ID. But socket IDs change on reconnect. 
+        // Current implementation: `this.parties[partyCode] = { creator: username, members: ... }`
+        // We only stored username. 
+        // Let's check if the requester's username matches the creator's username.
+        const requestUser = this.users[creatorSocketId];
+        if (requestUser !== party.creator) {
+            return { error: "Only the host can kick users" };
+        }
+
+        // Check if target is in party
+        const targetInParty = party.members.find(u => u.id === targetSocketId);
+        if (!targetInParty) return { error: "User not in your party" };
+
+        logger.info(`Kick: ${requestUser} kicking ${targetInParty.username} (${targetSocketId})`);
+
+        // Use leaveParty logic for the target
+        // BUT leaveParty deletes userParty entries provided by the socket ID.
+        // We can reuse leaveParty logic partially or call it? 
+        // Calling leaveParty(targetSocketId) is safe because it cleans up everything.
+
+        const result = this.leaveParty(targetSocketId);
+        return { success: true, ...result };
+    }
+
     handleDisconnect(socketId) {
         const result = this.leaveParty(socketId);
         delete this.users[socketId];
