@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { socket } from "@/lib/socket";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Users, LogOut, Copy, Trash2 } from "lucide-react";
+import { Menu, X, Users, LogOut, Copy, Trash2, Info } from "lucide-react";
 
 const LiveMap = dynamic(() => import("./LiveMap"), { ssr: false });
 
@@ -14,6 +14,13 @@ interface PartyUser {
 interface PartyJoinedPayload {
   partyCode: string;
   users: PartyUser[];
+  creator?: string; // Added creator field
+}
+
+// Simple Toast Interface
+interface Toast {
+  id: string;
+  message: string;
 }
 
 export default function MapPage() {
@@ -21,7 +28,18 @@ export default function MapPage() {
   const [members, setMembers] = useState<PartyUser[]>([]);
   const [username, setUsername] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isCreator, setIsCreator] = useState(false); // Quick fix for now: creator = first user or explicit create
+  const [isCreator, setIsCreator] = useState(false);
+
+  // Toast State
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (message: string) => {
+    const id = Math.random().toString(36).substring(7);
+    setToasts(prev => [...prev, { id, message }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  };
 
   useEffect(() => {
     let name = sessionStorage.getItem("username");
@@ -34,24 +52,47 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    socket.on("partyJoined", ({ partyCode, users }: PartyJoinedPayload) => {
+    socket.on("partyJoined", ({ partyCode, users, creator }: PartyJoinedPayload) => {
       setPartyCode(partyCode);
       setMembers(users);
+
+      // If we are strictly the joiner (not creator), creator check helps
+      // For the creator themselves, effectively they are the creator.
+      const amICreator = creator === username;
+      setIsCreator(amICreator);
+
+      if (!amICreator && creator) {
+        addToast(`Joined ${creator}'s party!`);
+      } else if (amICreator) {
+        addToast("Party created successfully!");
+      }
     });
 
     socket.on("userJoined", (user: PartyUser) => {
       setMembers((prev) => [...prev, user]);
+      addToast(`${user.username} joined the party`);
     });
 
     socket.on("user-disconnected", (id: string) => {
-      setMembers((prev) => prev.filter((u) => u.id !== id));
+      // Find username for better toast? 
+      // We only have ID here unless we lookup in `members` before filtering
+      setMembers((prev) => {
+        const user = prev.find(u => u.id === id);
+        if (user) addToast(`${user.username} left the party`);
+        return prev.filter((u) => u.id !== id);
+      });
     });
 
     socket.on("partyClosed", () => {
+      addToast("Party was closed by the host.");
       setPartyCode(null);
       setMembers([]);
       setIsCreator(false);
       setIsSidebarOpen(false);
+    });
+
+    socket.on("partyError", (msg: string) => {
+      alert(msg); // Or use toast
     });
 
     return () => {
@@ -60,8 +101,9 @@ export default function MapPage() {
       socket.off("user-disconnected");
       socket.off("partyClosed");
       socket.off("partyLeft");
+      socket.off("partyError");
     };
-  }, []);
+  }, [username]); // depend on username for creator check logic
 
   // Add listener for successful leave
   useEffect(() => {
@@ -70,6 +112,7 @@ export default function MapPage() {
       setMembers([]);
       setIsCreator(false);
       setIsSidebarOpen(false);
+      addToast("You left the party.");
     });
 
     return () => {
@@ -78,14 +121,12 @@ export default function MapPage() {
   }, []);
 
   const handleCreateParty = () => {
-    setIsCreator(true);
     socket.emit("createParty", username);
   };
 
   const handleJoinParty = () => {
     const code = prompt("Enter party code");
     if (code) {
-      setIsCreator(false); // Reset creator status if joining
       socket.emit("joinParty", {
         partyCode: code.trim().toUpperCase(),
         username,
@@ -94,10 +135,8 @@ export default function MapPage() {
   };
 
   const handleKick = (userId: string) => {
-    // Assuming backend supports this or we just visually remove for now and emit
     if (confirm("Are you sure you want to kick this user?")) {
       socket.emit("kick-user", { userId, partyCode });
-      // Optimistic update
       setMembers((prev) => prev.filter((u) => u.id !== userId));
     }
   };
@@ -106,6 +145,25 @@ export default function MapPage() {
 
   return (
     <div className="h-screen w-screen bg-black text-white flex flex-col relative overflow-hidden">
+
+      {/* TOAST CONSTAINER */}
+      <div className="absolute bottom-6 right-6 z-[2000] flex flex-col gap-2 pointer-events-none">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 20, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.9 }}
+              className="bg-black/80 backdrop-blur border border-white/20 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 min-w-[200px]"
+            >
+              <Info size={18} className="text-cyan-400" />
+              <span className="text-sm font-medium">{toast.message}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
       {/* SIDEBAR */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -114,7 +172,7 @@ export default function MapPage() {
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="absolute top-0 left-0 h-full w-80 bg-black/90 backdrop-blur-xl z-50 border-r border-white/10 shadow-2xl flex flex-col"
+            className="absolute top-0 left-0 h-full w-80 bg-black/90 backdrop-blur-xl z-[1500] border-r border-white/10 shadow-2xl flex flex-col"
           >
             {/* Sidebar Header */}
             <div className="p-6 border-b border-white/10 flex items-center justify-between">
@@ -142,7 +200,10 @@ export default function MapPage() {
                         {partyCode}
                       </span>
                       <button
-                        onClick={() => navigator.clipboard.writeText(partyCode!)}
+                        onClick={() => {
+                          navigator.clipboard.writeText(partyCode!);
+                          addToast("Party code copied!");
+                        }}
                         className="p-2 hover:bg-white/10 rounded-lg transition"
                         title="Copy Code"
                       >
@@ -173,6 +234,7 @@ export default function MapPage() {
                             <span className="font-medium flex flex-col">
                               {member.username}
                               {member.id === socket.id && <span className="text-[10px] text-gray-500">You</span>}
+                              {isCreator && member.username === username && <span className="text-[10px] text-cyan-400">Host</span>}
                             </span>
                           </div>
 
@@ -214,7 +276,7 @@ export default function MapPage() {
       </AnimatePresence>
 
       {/* NAVBAR */}
-      <div className="h-14 bg-black/70 backdrop-blur flex items-center px-4 gap-4 border-b border-white/10 z-40">
+      <div className="h-14 bg-black/70 backdrop-blur flex items-center px-4 gap-4 border-b border-white/10 z-[1000]">
 
         {/* Hamburger Trigger */}
         <button
@@ -260,13 +322,6 @@ export default function MapPage() {
       {/* MAP */}
       <div className="flex-1 relative z-0">
         <LiveMap username={username} />
-
-        {/* Fake Zoom Control Hider (if needed, but z-index usually handles it. 
-            Leaflet controls are z-index 1000. Sidebar is z-50 (50). 
-            Wait, sidebar needs to be higher than Leaflet controls.
-            Leaflet controls are usually z-index 1000.
-            Sidebar needs z-[1001] or higher.
-        */}
       </div>
     </div>
   );

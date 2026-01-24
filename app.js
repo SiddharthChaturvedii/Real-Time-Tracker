@@ -1,11 +1,19 @@
 const express = require("express");
 const http = require("http");
-const { v4: uuidv4 } = require("uuid");
+const partyManager = require("./managers/PartyManager");
+const logger = require("./utils/logger");
+const { isValidUsername, isValidPartyCode, isValidLocation } = require("./utils/validation");
 
 const app = express();
 const server = http.createServer(app);
 
 const io = require("socket.io")(server, {
+  connectionStateRecovery: {
+    // the backup duration of the sessions and the packets
+    maxDisconnectionDuration: 2 * 60 * 1000,
+    // whether to skip middlewares upon successful recovery
+    skipMiddlewares: true,
+  },
   cors: {
     origin: [
       "http://localhost:3000",
@@ -18,107 +26,78 @@ const io = require("socket.io")(server, {
 });
 
 // =============================
-// STATE (SINGLE SOURCE OF TRUTH)
-// =============================
-const users = {};          // socket.id -> username
-const parties = {};        // partyCode -> [{ id, username }]
-const userParty = {};      // socket.id -> partyCode
-const userLocations = {};  // socket.id -> { latitude, longitude }
-
-// =============================
-// HELPERS
-// =============================
-function removeUserFromParty(socket) {
-  const code = userParty[socket.id];
-  if (!code || !parties[code]) return;
-
-  console.log(`[PARTY] Removing user ${socket.id} from party ${code}`);
-
-  // 1️⃣ Remove user from party list
-  parties[code] = parties[code].filter(u => u.id !== socket.id);
-
-  // 2️⃣ Remove socket from room
-  socket.leave(code);
-
-  // 3️⃣ Cleanup user mappings
-  delete userParty[socket.id];
-  delete userLocations[socket.id];
-
-  // 4️⃣ Notify remaining users
-  io.to(code).emit("user-disconnected", socket.id);
-
-  // 5️⃣ Notify the USER who left to reset their state
-  socket.emit("partyLeft");
-
-  // 5️⃣ DESTROY PARTY if 0 left (Empty)
-  if (parties[code].length === 0) {
-    console.log(`[PARTY] Closing party ${code} (empty)`);
-    delete parties[code];
-  } else {
-    // If users remain, just tell them someone left
-    // (We already did this in step 4, so we are good)
-  }
-}
-
-
-// =============================
 // SOCKET
 // =============================
 io.on("connection", (socket) => {
-  console.log(`[CONNECT] Socket connected: ${socket.id}`);
-  users[socket.id] = "Guest";
+  if (socket.recovered) {
+    logger.info(`Socket recovered: ${socket.id}`);
+    // recovery successful, socket.id, socket.rooms and socket.data are restored
+  } else {
+    logger.info(`Socket connected: ${socket.id}`);
+    partyManager.registerUser(socket.id, "Guest");
+  }
 
   socket.on("register-user", (username) => {
-    console.log(`[REGISTER] User registered: ${username} (${socket.id})`);
-    users[socket.id] = username || "Guest";
+    if (!isValidUsername(username)) return;
+    partyManager.registerUser(socket.id, username);
   });
 
   // ---------- CREATE PARTY ----------
   socket.on("createParty", (username) => {
-    const partyCode = uuidv4().slice(0, 6).toUpperCase();
-    console.log(`[CREATE] User ${username} (${socket.id}) created party ${partyCode}`);
+    if (!isValidUsername(username)) {
+      socket.emit("partyError", "Invalid username");
+      return;
+    }
 
-    parties[partyCode] = [{ id: socket.id, username }];
-    userParty[socket.id] = partyCode;
-
+    const { partyCode, users, creator } = partyManager.createParty(socket.id, username);
     socket.join(partyCode);
 
     socket.emit("partyJoined", {
       partyCode,
-      users: parties[partyCode],
+      users,
+      creator
     });
   });
 
   // ---------- JOIN PARTY ----------
   socket.on("joinParty", ({ partyCode, username }) => {
-    console.log(`[JOIN] User ${username} (${socket.id}) attempting to join party ${partyCode}`);
-    if (!parties[partyCode]) {
-      console.log(`[JOIN_ERROR] Party ${partyCode} does not exist`);
-      socket.emit("partyError", "Party does not exist");
+    if (!isValidPartyCode(partyCode) || !isValidUsername(username)) {
+      socket.emit("partyError", "Invalid input");
       return;
     }
 
-    const user = { id: socket.id, username };
-    parties[partyCode].push(user);
-    userParty[socket.id] = partyCode;
+    const result = partyManager.joinParty(socket.id, username, partyCode);
+
+    if (result.error) {
+      logger.warn(`Join failed: ${result.error}`);
+      socket.emit("partyError", result.error);
+      return;
+    }
+
+    const { users, creator } = result;
 
     socket.join(partyCode);
 
+    // Notify SELF
     socket.emit("partyJoined", {
       partyCode,
-      users: parties[partyCode],
+      users, // Full list including self
+      creator
     });
 
-    socket.to(partyCode).emit("userJoined", user);
+    // Notify OTHERS
+    socket.to(partyCode).emit("userJoined", { id: socket.id, username });
 
-    // send existing locations
-    parties[partyCode].forEach((u) => {
-      if (userLocations[u.id]) {
+    // Send existing locations to NEW USER (Iterate users in party and send their cached locs)
+    // NOTE: PartyManager has userLocations.
+    users.forEach(u => {
+      const loc = partyManager.userLocations[u.id];
+      if (loc) {
         socket.emit("receive-location", {
           id: u.id,
-          username: users[u.id],
-          latitude: userLocations[u.id].latitude,
-          longitude: userLocations[u.id].longitude,
+          username: u.username,
+          latitude: loc.latitude,
+          longitude: loc.longitude
         });
       }
     });
@@ -126,47 +105,53 @@ io.on("connection", (socket) => {
 
   // ---------- LOCATION ----------
   socket.on("send-location", ({ latitude, longitude, username }) => {
-    // ✅ ALWAYS store latest location
-    userLocations[socket.id] = { latitude, longitude };
+    if (!isValidLocation(latitude, longitude)) return;
 
-    const code = userParty[socket.id];
-    if (!code || !parties[code]) return; // ⛔ no broadcast if not in party
+    const partyCode = partyManager.updateLocation(socket.id, latitude, longitude);
 
-    // ✅ broadcast ONLY to party
-    io.to(code).emit("receive-location", {
-      id: socket.id,
-      username: username || users[socket.id],
-      latitude,
-      longitude,
-    });
+    if (partyCode) {
+      // Broadcast to party (excluding sender)
+      socket.to(partyCode).emit("receive-location", {
+        id: socket.id,
+        username: username || partyManager.getUser(socket.id),
+        latitude,
+        longitude,
+      });
+    }
   });
 
   // ---------- LEAVE ----------
+  // ---------- LEAVE ----------
   socket.on("leaveParty", () => {
-    console.log(`[LEAVE] Socket ${socket.id} requested to leave party`);
-    removeUserFromParty(socket);
-  });
+    logger.info(`[LEAVE] Socket ${socket.id} requested to leave party`);
+    const result = partyManager.leaveParty(socket.id);
 
-  // ---------- KICK ----------
-  socket.on("kick-user", ({ userId, partyCode }) => {
-    console.log(`[KICK] User ${userId} kicked from party ${partyCode} by ${socket.id}`);
+    if (result && result.partyCode) {
+      socket.leave(result.partyCode);
+      socket.emit("partyClosed"); // Or just clear local state
 
-    // In a real app, verify socket.id is the admin/creator.
-    // Here we trust the client for now or check if they are in the same party.
+      // Notify others
+      socket.to(result.partyCode).emit("user-disconnected", socket.id);
 
-    const targetSocket = io.sockets.sockets.get(userId);
-    if (targetSocket) {
-      removeUserFromParty(targetSocket);
-      // Optional: Notify specifically that they were kicked
-      targetSocket.emit("partyError", "You have been kicked from the party.");
+      if (result.partyClosed) {
+        socket.to(result.partyCode).emit("partyClosed");
+      }
     }
   });
 
   // ---------- DISCONNECT ----------
   socket.on("disconnect", () => {
-    console.log(`[DISCONNECT] Socket disconnected: ${socket.id}`);
-    removeUserFromParty(socket);
-    delete users[socket.id];
+    logger.info(`[DISCONNECT] Socket disconnected: ${socket.id}`);
+    const result = partyManager.handleDisconnect(socket.id);
+
+    if (result && result.partyCode) {
+      // Notify others
+      socket.to(result.partyCode).emit("user-disconnected", socket.id);
+
+      if (result.partyClosed) {
+        socket.to(result.partyCode).emit("partyClosed");
+      }
+    }
   });
 });
 
