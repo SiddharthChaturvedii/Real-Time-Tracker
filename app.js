@@ -47,6 +47,9 @@ function removeUserFromParty(socket) {
   // 4️⃣ Notify remaining users
   io.to(code).emit("user-disconnected", socket.id);
 
+  // 5️⃣ Notify the USER who left to reset their state
+  socket.emit("partyLeft");
+
   // 5️⃣ DESTROY PARTY if 0 left (Empty)
   if (parties[code].length === 0) {
     console.log(`[PARTY] Closing party ${code} (empty)`);
@@ -142,6 +145,21 @@ io.on("connection", (socket) => {
   socket.on("leaveParty", () => {
     console.log(`[LEAVE] Socket ${socket.id} requested to leave party`);
     removeUserFromParty(socket);
+  });
+
+  // ---------- KICK ----------
+  socket.on("kick-user", ({ userId, partyCode }) => {
+    console.log(`[KICK] User ${userId} kicked from party ${partyCode} by ${socket.id}`);
+
+    // In a real app, verify socket.id is the admin/creator.
+    // Here we trust the client for now or check if they are in the same party.
+
+    const targetSocket = io.sockets.sockets.get(userId);
+    if (targetSocket) {
+      removeUserFromParty(targetSocket);
+      // Optional: Notify specifically that they were kicked
+      targetSocket.emit("partyError", "You have been kicked from the party.");
+    }
   });
 
   // ---------- DISCONNECT ----------

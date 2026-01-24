@@ -1,8 +1,8 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { socket } from "@/lib/socket";
 import dynamic from "next/dynamic";
+import { motion, AnimatePresence } from "framer-motion";
+import { Menu, X, Users, LogOut, Copy, Trash2 } from "lucide-react";
 
 const LiveMap = dynamic(() => import("./LiveMap"), { ssr: false });
 
@@ -20,6 +20,8 @@ export default function MapPage() {
   const [partyCode, setPartyCode] = useState<string | null>(null);
   const [members, setMembers] = useState<PartyUser[]>([]);
   const [username, setUsername] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCreator, setIsCreator] = useState(false); // Quick fix for now: creator = first user or explicit create
 
   useEffect(() => {
     let name = sessionStorage.getItem("username");
@@ -48,6 +50,8 @@ export default function MapPage() {
     socket.on("partyClosed", () => {
       setPartyCode(null);
       setMembers([]);
+      setIsCreator(false);
+      setIsSidebarOpen(false);
     });
 
     return () => {
@@ -55,66 +59,214 @@ export default function MapPage() {
       socket.off("userJoined");
       socket.off("user-disconnected");
       socket.off("partyClosed");
+      socket.off("partyLeft");
     };
   }, []);
+
+  // Add listener for successful leave
+  useEffect(() => {
+    socket.on("partyLeft", () => {
+      setPartyCode(null);
+      setMembers([]);
+      setIsCreator(false);
+      setIsSidebarOpen(false);
+    });
+
+    return () => {
+      socket.off("partyLeft");
+    };
+  }, []);
+
+  const handleCreateParty = () => {
+    setIsCreator(true);
+    socket.emit("createParty", username);
+  };
+
+  const handleJoinParty = () => {
+    const code = prompt("Enter party code");
+    if (code) {
+      setIsCreator(false); // Reset creator status if joining
+      socket.emit("joinParty", {
+        partyCode: code.trim().toUpperCase(),
+        username,
+      });
+    }
+  };
+
+  const handleKick = (userId: string) => {
+    // Assuming backend supports this or we just visually remove for now and emit
+    if (confirm("Are you sure you want to kick this user?")) {
+      socket.emit("kick-user", { userId, partyCode });
+      // Optimistic update
+      setMembers((prev) => prev.filter((u) => u.id !== userId));
+    }
+  };
 
   const inParty = Boolean(partyCode);
 
   return (
-    <div className="h-screen w-screen bg-black text-white flex flex-col">
-      {/* NAVBAR */}
-      <div className="h-14 bg-black/70 backdrop-blur flex items-center px-4 gap-4 border-b border-white/10">
-        <h1 className="font-semibold">LiveTrack</h1>
+    <div className="h-screen w-screen bg-black text-white flex flex-col relative overflow-hidden">
+      {/* SIDEBAR */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="absolute top-0 left-0 h-full w-80 bg-black/90 backdrop-blur-xl z-50 border-r border-white/10 shadow-2xl flex flex-col"
+          >
+            {/* Sidebar Header */}
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+                Party Stats
+              </h2>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-        <span className="text-xs px-2 py-1 rounded bg-green-600/20 text-green-400">
-          {inParty ? "IN PARTY" : "NOT IN PARTY"}
+            {/* Party Info */}
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+              {inParty ? (
+                <>
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                    <div className="text-xs text-gray-400 mb-1 uppercase tracking-wider">
+                      Party Code
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-mono font-bold text-cyan-400">
+                        {partyCode}
+                      </span>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(partyCode!)}
+                        className="p-2 hover:bg-white/10 rounded-lg transition"
+                        title="Copy Code"
+                      >
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-sm text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <Users size={14} /> Members ({members.length})
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {members.map((member) => (
+                        <motion.div
+                          key={member.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-white/5 group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-xs uppercase">
+                              {member.username.slice(0, 2)}
+                            </div>
+                            <span className="font-medium flex flex-col">
+                              {member.username}
+                              {member.id === socket.id && <span className="text-[10px] text-gray-500">You</span>}
+                            </span>
+                          </div>
+
+                          {isCreator && member.id !== socket.id && (
+                            <button
+                              onClick={() => handleKick(member.id)}
+                              className="text-red-500 opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/10 rounded-lg transition"
+                              title="Kick User"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  <p>Not in a party.</p>
+                  <p className="text-sm mt-2">Create or join one to see stats.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar Footer */}
+            {inParty && (
+              <div className="p-6 border-t border-white/10">
+                <button
+                  onClick={() => socket.emit("leaveParty")}
+                  className="w-full flex items-center justify-center gap-2 bg-red-600/20 hover:bg-red-600/30 text-red-500 py-3 rounded-xl transition font-medium border border-red-600/20"
+                >
+                  <LogOut size={18} /> Leave Party
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* NAVBAR */}
+      <div className="h-14 bg-black/70 backdrop-blur flex items-center px-4 gap-4 border-b border-white/10 z-40">
+
+        {/* Hamburger Trigger */}
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-2 mr-2 hover:bg-white/10 rounded-lg transition-colors"
+        >
+          <Menu size={20} />
+        </button>
+
+        <h1 className="font-semibold text-lg tracking-tight">
+          LiveTrack
+        </h1>
+
+        <span className={`text-xs px-2 py-1 rounded bg-green-600/20 text-green-400 ${!inParty && 'opacity-0'}`}>
+          IN PARTY
         </span>
 
         {inParty && (
-          <span className="text-xs font-mono text-white/80">
-            Code: {partyCode}
+          <span className="hidden md:inline-block text-xs font-mono text-white/60">
+            {partyCode}
           </span>
         )}
 
         {!inParty && (
-          <>
+          <div className="ml-auto flex gap-3">
             <button
-              className="ml-4 bg-white text-black px-3 py-1 rounded text-sm"
-              onClick={() => socket.emit("createParty", username)}
+              className="bg-white text-black px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition"
+              onClick={handleCreateParty}
             >
               Create
             </button>
 
             <button
-              className="bg-white text-black px-3 py-1 rounded text-sm"
-              onClick={() => {
-                const code = prompt("Enter party code");
-                if (code) {
-                  socket.emit("joinParty", {
-                    partyCode: code.trim().toUpperCase(),
-                    username,
-                  });
-                }
-              }}
+              className="bg-white/10 hover:bg-white/20 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition border border-white/10"
+              onClick={handleJoinParty}
             >
               Join
             </button>
-          </>
-        )}
-
-        {inParty && (
-          <button
-            className="ml-auto bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
-            onClick={() => socket.emit("leaveParty")}
-          >
-            Leave
-          </button>
+          </div>
         )}
       </div>
 
       {/* MAP */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative z-0">
         <LiveMap username={username} />
+
+        {/* Fake Zoom Control Hider (if needed, but z-index usually handles it. 
+            Leaflet controls are z-index 1000. Sidebar is z-50 (50). 
+            Wait, sidebar needs to be higher than Leaflet controls.
+            Leaflet controls are usually z-index 1000.
+            Sidebar needs z-[1001] or higher.
+        */}
       </div>
     </div>
   );
