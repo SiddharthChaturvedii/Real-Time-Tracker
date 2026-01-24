@@ -11,6 +11,7 @@ const io = require("socket.io")(server, {
       "http://localhost:3000",
       "http://localhost:3001",
       "https://real-time-tracker-0qge.onrender.com",
+      "https://real-time-tracker-three.vercel.app",
     ],
     methods: ["GET", "POST"],
   },
