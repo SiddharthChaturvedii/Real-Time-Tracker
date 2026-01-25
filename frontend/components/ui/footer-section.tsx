@@ -10,7 +10,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Instagram, Linkedin, Github, Send, Mail, MapPin, Phone } from "lucide-react"
+import { Instagram, Linkedin, Github, Send, Mail, MapPin } from "lucide-react"
 import { GlowingEffect } from "./glowing-effect"
 import { cn } from "@/lib/utils"
 
@@ -96,14 +96,10 @@ function Footerdemo({ isDarkMode }: FooterProps) {
                                 </Button>
                             </form>
 
-                            <div className="mt-10 pt-8 border-t border-current/5 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div className="mt-10 pt-8 border-t border-current/5">
                                 <div className="flex items-center gap-3">
                                     <MapPin className="h-5 w-5 text-purple-400" />
                                     <span className="text-xs font-bold opacity-60 uppercase tracking-widest text-left">India, Global Support</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <Phone className="h-5 w-5 text-green-400" />
-                                    <span className="text-xs font-bold opacity-60 uppercase tracking-widest text-left">+91 SIDD-TRACK</span>
                                 </div>
                             </div>
                         </div>

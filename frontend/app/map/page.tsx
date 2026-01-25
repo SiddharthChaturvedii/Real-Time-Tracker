@@ -216,7 +216,7 @@ export default function MapPage() {
   const helplines = getHelplinesByLocation(userLocation?.lat, userLocation?.lng);
 
   return (
-    <div className={`h-screen w-screen flex flex-col relative overflow-hidden font-sans selection:bg-cyan-500/30 transition-colors duration-500 ${mapTheme === 'dark' ? 'bg-black text-white' : 'bg-white/80 text-black'}`}>
+    <div className="h-screen w-screen flex flex-col relative overflow-hidden font-sans selection:bg-cyan-500/30 transition-colors duration-500 bg-[#0a0f1a] text-white">
 
       {/* TOAST CONTAINER */}
       <div className="absolute bottom-6 right-6 z-[2000] flex flex-col gap-3 pointer-events-none">
@@ -259,8 +259,7 @@ export default function MapPage() {
       </AnimatePresence>
 
       {/* NAVBAR / EMERGENCY HEADER */}
-      <div className={`h-16 flex items-center px-6 border-b transition-all duration-700 z-[1000] justify-between ${someoneInSOS ? 'bg-red-950/50 border-red-500/40 shadow-[0_0_50px_rgba(220,38,38,0.25)]' :
-        mapTheme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-white/60 border-black/5'} backdrop-blur-3xl`}>
+      <div className={`h-16 flex items-center px-6 border-b transition-all duration-700 z-[1000] justify-between ${someoneInSOS ? 'bg-red-950/50 border-red-500/40 shadow-[0_0_50px_rgba(220,38,38,0.25)]' : 'bg-black/40 border-white/5'} backdrop-blur-3xl`}>
         <div className="flex items-center gap-4">
           <motion.button
             whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.15)" }}
@@ -291,6 +290,17 @@ export default function MapPage() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* THEME TOGGLE */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setMapTheme(prev => prev === 'dark' ? 'bright' : 'dark')}
+            className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+            title={mapTheme === 'dark' ? 'Switch to Bright Map' : 'Switch to Dark Map'}
+          >
+            {mapTheme === 'dark' ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} className="text-cyan-400" />}
+          </motion.button>
         </div>
 
         <div className="flex items-center gap-3">
@@ -520,33 +530,6 @@ export default function MapPage() {
                       </AnimatePresence>
                     </div>
 
-                    {/* THEME TOGGLE */}
-                    <div className="pt-6 border-t border-white/5">
-                      <motion.button
-                        whileHover={{ scale: 1.02, backgroundColor: "rgba(255,255,255,0.05)" }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setMapTheme(prev => prev === "dark" ? "bright" : "dark")}
-                        className="w-full flex items-center justify-between p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 transition-all group"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-2xl bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20">
-                            {mapTheme === "dark" ? <Moon size={20} /> : <Sun size={20} />}
-                          </div>
-                          <div className="flex flex-col text-left">
-                            <span className="text-sm font-black uppercase tracking-widest text-white/90">Map Theme</span>
-                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">
-                              Current: {mapTheme.toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${mapTheme === "dark" ? 'bg-cyan-600' : 'bg-gray-600'}`}>
-                          <motion.div
-                            animate={{ x: mapTheme === "dark" ? 24 : 0 }}
-                            className="w-4 h-4 bg-white rounded-full shadow-sm"
-                          />
-                        </div>
-                      </motion.button>
-                    </div>
                   </LayoutGroup>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-32 opacity-20 text-center">

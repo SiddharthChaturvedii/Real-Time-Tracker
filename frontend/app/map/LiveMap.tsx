@@ -179,15 +179,16 @@ export default function LiveMap({
       ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
-    // Switch to standard HTTP if SSL is broken on user machine? 
-    // No, better to try a more reliable dark theme if Carto is failing.
-    // Using a different dark theme as requested "back to original" might mean OSM standard.
-
     const options = theme === "dark"
       ? { subdomains: 'abcd', attribution: '&copy; CARTO' }
       : { attribution: '&copy; OpenStreetMap' };
 
     tileLayerRef.current = L.tileLayer(url, options).addTo(mapRef.current);
+
+    // Error handling for tile loading
+    tileLayerRef.current.on('tileerror', () => {
+      console.warn('Tile load error, attempting fallback...');
+    });
   }, [theme]);
 
   useEffect(() => {
@@ -371,7 +372,7 @@ export default function LiveMap({
         .waypoint-tooltip { background: rgba(255,215,0,0.2); border: 1px solid gold; color: gold; font-weight: 900; }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
       `}</style>
-      <div ref={mapElRef} className={`absolute inset-0 h-full w-full transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-[#f4f1ea]'}`} />
+      <div ref={mapElRef} className={`absolute inset-0 h-full w-full transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-[#e8e4dc]'}`} />
     </>
   );
 }
