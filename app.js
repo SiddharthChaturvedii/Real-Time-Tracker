@@ -103,6 +103,18 @@ io.on("connection", (socket) => {
         });
       }
     });
+
+    // ✅ BROADCAST JOINER'S LOCATION TO OTHERS
+    // (This ensures the creator sees the joiner's marker immediately)
+    const joinerLoc = partyManager.userLocations[socket.id];
+    if (joinerLoc) {
+      io.to(partyCode).emit("receive-location", {
+        id: socket.id,
+        username: username,
+        latitude: joinerLoc.latitude,
+        longitude: joinerLoc.longitude
+      });
+    }
   });
 
   // ---------- LOCATION ----------

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import gsap from "gsap";
 import ScrollTrigger from "gsap/ScrollTrigger";
 import MiniMapDemo from "../components/MiniMapDemo";
+import { GlowingEffect } from "../components/ui/glowing-effect";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -85,14 +86,24 @@ export default function Home() {
           instantly.
         </motion.p>
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => (window.location.href = MAP_APP_URL)}
-          className="mt-10 px-8 py-3 bg-cyan-400 hover:bg-cyan-300 transition rounded-xl text-black font-semibold"
-        >
-          ⚡ Open App
-        </motion.button>
+        <div className="relative mt-10 rounded-xl p-[1px]">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+            borderWidth={2}
+          />
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => (window.location.href = MAP_APP_URL)}
+            className="relative px-8 py-3 bg-cyan-400 hover:bg-cyan-300 transition rounded-xl text-black font-semibold"
+          >
+            ⚡ Open App
+          </motion.button>
+        </div>
       </section>
 
       {/* FEATURES */}
@@ -116,10 +127,20 @@ export default function Home() {
           ].map(([title, desc], i) => (
             <div
               key={i}
-              className="bg-[#0b132b] p-6 rounded-2xl shadow-lg"
+              className="relative group p-[1px] rounded-2xl"
             >
-              <p className="text-xl font-semibold">{title}</p>
-              <p className="text-gray-400 mt-2">{desc}</p>
+              <GlowingEffect
+                spread={40}
+                glow={true}
+                disabled={false}
+                proximity={64}
+                inactiveZone={0.01}
+                borderWidth={2}
+              />
+              <div className="relative bg-[#0b132b] p-6 rounded-2xl shadow-lg h-full border border-white/5">
+                <p className="text-xl font-semibold">{title}</p>
+                <p className="text-gray-400 mt-2">{desc}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -135,21 +156,44 @@ export default function Home() {
           Live realtime map preview — simulated demo 🚀
         </p>
 
-        <MiniMapDemo />
+        <div className="relative p-[1px] rounded-[18px]">
+          <GlowingEffect
+            spread={50}
+            glow={true}
+            disabled={false}
+            proximity={80}
+            inactiveZone={0.01}
+            borderWidth={3}
+          />
+          <div className="relative rounded-[18px] overflow-hidden border border-white/10">
+            <MiniMapDemo />
+          </div>
+        </div>
       </section>
 
       {/* FINAL CTA */}
       <section className="py-24 px-8 text-center reveal">
-        <div className="bg-[#0b132b] inline-block px-10 py-8 rounded-2xl shadow-xl">
-          <h3 className="text-2xl font-bold mb-4">Ready to Track?</h3>
-          <button
-            onClick={() => (window.location.href = MAP_APP_URL)}
-            className="px-8 py-3 bg-cyan-400 hover:bg-cyan-300 rounded-xl text-black font-semibold"
-          >
-            Launch App 🚀
-          </button>
+        <div className="relative inline-block p-[1px] rounded-2xl">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+            borderWidth={2}
+          />
+          <div className="relative bg-[#0b132b] px-10 py-8 rounded-2xl shadow-xl border border-white/5">
+            <h3 className="text-2xl font-bold mb-4">Ready to Track?</h3>
+            <button
+              onClick={() => (window.location.href = MAP_APP_URL)}
+              className="px-8 py-3 bg-cyan-400 hover:bg-cyan-300 rounded-xl text-black font-semibold transition-colors"
+            >
+              Launch App 🚀
+            </button>
+          </div>
         </div>
       </section>
     </main>
   );
 }
+
