@@ -1,6 +1,5 @@
 "use client";
 
-import { ShaderAnimation } from "@/components/ui/shader-animation";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import gsap from "gsap";
@@ -9,6 +8,7 @@ import MiniMapDemo from "../components/MiniMapDemo";
 
 gsap.registerPlugin(ScrollTrigger);
 
+// ✅ FIXED: Frontend map route
 const MAP_APP_URL = "/map";
 
 export default function Home() {
@@ -28,10 +28,39 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="text-white min-h-screen bg-black">
-      {/* SHADER BACKGROUND */}
-      <div className="fixed inset-0 -z-10 bg-black">
-        <ShaderAnimation />
+    <main className="text-white min-h-screen">
+      {/* Animated Gradient Background */}
+      <div className="fixed inset-0 -z-10">
+        <svg
+          className="w-full h-full blur-3xl opacity-50"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#00fff2" />
+              <stop offset="50%" stopColor="#ff00ff" />
+              <stop offset="100%" stopColor="#00b3ff" />
+            </linearGradient>
+          </defs>
+
+          <motion.circle
+            cx="30%"
+            cy="30%"
+            r="200"
+            fill="url(#grad1)"
+            animate={{ cx: "70%", cy: "60%" }}
+            transition={{ duration: 10, repeat: Infinity, repeatType: "reverse" }}
+          />
+
+          <motion.circle
+            cx="70%"
+            cy="50%"
+            r="250"
+            fill="url(#grad1)"
+            animate={{ cx: "20%", cy: "70%" }}
+            transition={{ duration: 12, repeat: Infinity, repeatType: "reverse" }}
+          />
+        </svg>
       </div>
 
       {/* HERO */}
