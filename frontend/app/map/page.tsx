@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { socket } from "@/lib/socket";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { Menu, X, Users, LogOut, Copy, Trash2, Info, Phone, ShieldAlert, Heart, Siren, CheckCircle2, Navigation, AlertCircle, Moon, Sun } from "lucide-react";
+import { Menu, X, Users, LogOut, Copy, Trash2, Info, Phone, ShieldAlert, Heart, Siren, CheckCircle2, Navigation, AlertCircle } from "lucide-react";
 import { getHelplinesByLocation, Helpline } from "@/lib/helplines";
 
 const LiveMap = dynamic(() => import("./LiveMap"), { ssr: false });
@@ -40,8 +40,6 @@ export default function MapPage() {
   const [sosUsers, setSosUsers] = useState<string[]>([]);
   const [waypoints, setWaypoints] = useState<Array<{ id: string, lat: number, lng: number, label: string }>>([]);
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
-  // Theme State
-  const [mapTheme, setMapTheme] = useState<"bright" | "dark">("dark");
 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -567,7 +565,6 @@ export default function MapPage() {
           sosUsers={sosUsers}
           waypoints={waypoints}
           addToast={addToast}
-          theme={mapTheme}
         />
       </div>
 

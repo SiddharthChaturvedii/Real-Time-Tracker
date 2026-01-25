@@ -50,15 +50,13 @@ export default function LiveMap({
   members,
   sosUsers = [],
   waypoints = [],
-  addToast,
-  theme = "dark"
+  addToast
 }: {
   username: string;
   members: Array<{ id: string; username: string }>;
   sosUsers?: string[];
   waypoints?: Array<{ id: string, lat: number, lng: number, label: string }>;
   addToast: (msg: string, type: 'info' | 'error' | 'success') => void;
-  theme?: "bright" | "dark";
 }) {
   const mapRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -167,7 +165,7 @@ export default function LiveMap({
     };
   }, [username]);
 
-  // ✅ DYNAMIC THEME SWAP
+  // ✅ Initialize tile layer with original Leaflet/OpenStreetMap
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -175,21 +173,15 @@ export default function LiveMap({
       mapRef.current.removeLayer(tileLayerRef.current);
     }
 
-    const url = theme === "dark"
-      ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-      : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    tileLayerRef.current = L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      { attribution: '&copy; OpenStreetMap' }
+    ).addTo(mapRef.current);
 
-    const options = theme === "dark"
-      ? { subdomains: 'abcd', attribution: '&copy; CARTO' }
-      : { attribution: '&copy; OpenStreetMap' };
-
-    tileLayerRef.current = L.tileLayer(url, options).addTo(mapRef.current);
-
-    // Error handling for tile loading
     tileLayerRef.current.on('tileerror', () => {
-      console.warn('Tile load error, attempting fallback...');
+      console.warn('Tile load error');
     });
-  }, [theme]);
+  }, []);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -372,7 +364,7 @@ export default function LiveMap({
         .waypoint-tooltip { background: rgba(255,215,0,0.2); border: 1px solid gold; color: gold; font-weight: 900; }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
       `}</style>
-      <div ref={mapElRef} className={`absolute inset-0 h-full w-full transition-colors duration-500 ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-[#e8e4dc]'}`} />
+      <div ref={mapElRef} className="absolute inset-0 h-full w-full bg-[#e8e4dc]" />
     </>
   );
 }
