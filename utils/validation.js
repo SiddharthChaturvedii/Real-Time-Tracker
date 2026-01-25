@@ -15,8 +15,18 @@ function isValidLocation(lat, lng) {
     );
 }
 
+function isValidWaypoint(lat, lng, label) {
+    return (
+        isValidLocation(lat, lng) &&
+        typeof label === 'string' &&
+        label.trim().length > 0 &&
+        label.length <= 30
+    );
+}
+
 module.exports = {
     isValidUsername,
     isValidPartyCode,
-    isValidLocation
+    isValidLocation,
+    isValidWaypoint
 };

@@ -7,6 +7,9 @@ import ScrollTrigger from "gsap/ScrollTrigger";
 import MiniMapDemo from "../components/MiniMapDemo";
 import { GlowingEffect } from "../components/ui/glowing-effect";
 import { Footerdemo } from "../components/ui/footer-section";
+import { Switch } from "../components/ui/switch";
+import { Moon, Sun } from "lucide-react";
+import { useState } from "react";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -14,6 +17,16 @@ gsap.registerPlugin(ScrollTrigger);
 const MAP_APP_URL = "/map";
 
 export default function Home() {
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [isDarkMode]);
+
   useEffect(() => {
     gsap.utils.toArray(".reveal").forEach((el: any) => {
       gsap.fromTo(
@@ -30,39 +43,63 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="text-white min-h-screen">
-      {/* Animated Gradient Background */}
-      <div className="fixed inset-0 -z-10">
-        <svg
-          className="w-full h-full blur-3xl opacity-50"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#00fff2" />
-              <stop offset="50%" stopColor="#ff00ff" />
-              <stop offset="100%" stopColor="#00b3ff" />
-            </linearGradient>
-          </defs>
+    <main className={`transition-colors duration-700 ${isDarkMode ? "bg-black text-white" : "bg-white text-black"} min-h-screen relative`}>
+      {/* Theme Toggle Top Left */}
+      <div className="fixed top-6 left-6 z-[1000] flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-xl transition-all hover:scale-105 group">
+        <Sun className={`h-4 w-4 transition-colors ${isDarkMode ? "text-white/30" : "text-orange-500"}`} />
+        <Switch
+          id="global-dark-mode"
+          checked={isDarkMode}
+          onCheckedChange={setIsDarkMode}
+          className="data-[state=checked]:bg-cyan-600"
+        />
+        <Moon className={`h-4 w-4 transition-colors ${isDarkMode ? "text-cyan-400" : "text-black/30"}`} />
+      </div>
 
-          <motion.circle
-            cx="30%"
-            cy="30%"
-            r="200"
-            fill="url(#grad1)"
-            animate={{ cx: "70%", cy: "60%" }}
-            transition={{ duration: 10, repeat: Infinity, repeatType: "reverse" }}
-          />
+      {/* Animated Background */}
+      <div className="fixed inset-0 -z-10 transition-opacity duration-700">
+        {!isDarkMode ? (
+          /* Bright Mode Gradient */
+          <svg
+            className="w-full h-full blur-3xl opacity-50"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#00fff2" />
+                <stop offset="50%" stopColor="#ff00ff" />
+                <stop offset="100%" stopColor="#00b3ff" />
+              </linearGradient>
+            </defs>
 
-          <motion.circle
-            cx="70%"
-            cy="50%"
-            r="250"
-            fill="url(#grad1)"
-            animate={{ cx: "20%", cy: "70%" }}
-            transition={{ duration: 12, repeat: Infinity, repeatType: "reverse" }}
-          />
-        </svg>
+            <motion.circle
+              cx="30%"
+              cy="30%"
+              r="200"
+              fill="url(#grad1)"
+              animate={{ cx: "70%", cy: "60%" }}
+              transition={{ duration: 10, repeat: Infinity, repeatType: "reverse" }}
+            />
+
+            <motion.circle
+              cx="70%"
+              cy="50%"
+              r="250"
+              fill="url(#grad1)"
+              animate={{ cx: "20%", cy: "70%" }}
+              transition={{ duration: 12, repeat: Infinity, repeatType: "reverse" }}
+            />
+          </svg>
+        ) : (
+          /* Dark Mode Bubbles */
+          <div className="w-full h-full bg-black relative overflow-hidden">
+            <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-cyan-900/10 rounded-full blur-[120px] animate-pulse" />
+            <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[120px] animate-pulse" />
+            <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] border border-white/5 rounded-full" />
+            <div className="absolute bottom-[20%] left-[10%] w-[20%] h-[20%] border border-white/5 rounded-full" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.03)_0%,transparent_70%)]" />
+          </div>
+        )}
       </div>
 
       {/* HERO */}
@@ -138,9 +175,12 @@ export default function Home() {
                 inactiveZone={0.01}
                 borderWidth={2}
               />
-              <div className="relative bg-[#0b132b] p-6 rounded-2xl shadow-lg h-full border border-white/5">
-                <p className="text-xl font-semibold">{title}</p>
-                <p className="text-gray-400 mt-2">{desc}</p>
+              <div className={cn(
+                "relative p-6 rounded-2xl h-full border transition-colors duration-500",
+                isDarkMode ? "bg-white/5 border-white/5" : "bg-black/5 border-black/5"
+              )}>
+                <p className="text-xl font-semibold tracking-tight">{title}</p>
+                <p className={cn("mt-2 text-sm", isDarkMode ? "text-gray-400" : "text-gray-600")}>{desc}</p>
               </div>
             </div>
           ))}
@@ -172,7 +212,7 @@ export default function Home() {
         </div>
       </section>
 
-      <Footerdemo />
+      <Footerdemo isDarkMode={isDarkMode} />
     </main>
   );
 }

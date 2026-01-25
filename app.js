@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("http");
 const partyManager = require("./managers/PartyManager");
 const logger = require("./utils/logger");
-const { isValidUsername, isValidPartyCode, isValidLocation } = require("./utils/validation");
+const { isValidUsername, isValidPartyCode, isValidLocation, isValidWaypoint } = require("./utils/validation");
 
 const app = express();
 const server = http.createServer(app);
@@ -84,7 +84,9 @@ io.on("connection", (socket) => {
     socket.emit("partyJoined", {
       partyCode,
       users, // Full list including self
-      creator
+      creator,
+      sosUsers: partyManager.getSOSUsers(partyCode),
+      waypoints: partyManager.getWaypoints(partyCode)
     });
 
     // Notify OTHERS
@@ -164,33 +166,72 @@ io.on("connection", (socket) => {
     }
 
     if (result.success && result.partyCode) {
-      // Notify the kicked user
-      // We need to access the kicked socket to make it leave the room?
-      // We can't force `socket.leave` for ANOTHER socket easily without looking it up.
-      // But `partyManager` already cleaned up the state.
-      // We can emit to the specific socket ID using `io.to(userId)`
+      // Find the target socket by ID
+      const targetSocket = io.sockets.sockets.get(userId);
 
-      io.to(userId).emit("partyLeft"); // Reset their UI
+      // Notify the kicked user (if they are still connected)
+      io.to(userId).emit("partyLeft");
       io.to(userId).emit("partyError", "You were kicked from the party");
 
-      // Make the socket leave the room (if we can find it)
-      const targetSocket = io.sockets.sockets.get(userId);
       if (targetSocket) {
         targetSocket.leave(result.partyCode);
       }
 
-      // Notify others that user is gone
-      socket.to(result.partyCode).emit("user-disconnected", userId);
+      // Notify others in the party that user is gone
+      io.to(result.partyCode).emit("user-disconnected", userId);
+      logger.info(`User ${userId} was successfully kicked from ${result.partyCode}`);
     }
   });
 
   // ---------- SOS ----------
   socket.on("sos-signal", () => {
-    const code = partyManager.getUserParty(socket.id);
-    if (code) {
+    const result = partyManager.setSOS(socket.id, true);
+    if (result) {
       const username = partyManager.getUser(socket.id);
-      logger.info(`🚨 SOS SIGNAL from ${username} in party ${code}`);
-      io.to(code).emit("sos-alert", username);
+      logger.info(`🚨 SOS SIGNAL (PERSISTENT) from ${username} in party ${result.partyCode}`);
+      io.to(result.partyCode).emit("sos-alert", {
+        id: socket.id,
+        username,
+        sosUsers: result.sosUsers
+      });
+    }
+  });
+
+  socket.on("clear-sos", () => {
+    const result = partyManager.setSOS(socket.id, false);
+    if (result) {
+      const username = partyManager.getUser(socket.id);
+      logger.info(`✅ SOS CLEARED by ${username} in party ${result.partyCode}`);
+      io.to(result.partyCode).emit("sos-cleared", {
+        id: socket.id,
+        sosUsers: result.sosUsers
+      });
+    }
+  });
+
+  // ---------- WAYPOINTS ----------
+  socket.on("drop-waypoint", ({ lat, lng, label }) => {
+    if (!isValidWaypoint(lat, lng, label)) return;
+
+    const result = partyManager.addWaypoint(socket.id, lat, lng, label);
+    if (result) {
+      logger.info(`📍 WAYPOINT dropped by ${partyManager.getUser(socket.id)} in ${result.partyCode}`);
+      io.to(result.partyCode).emit("waypoint-dropped", result.waypoint);
+    }
+  });
+
+  socket.on("clear-waypoints", () => {
+    const partyCode = partyManager.getUserParty(socket.id);
+    if (!partyCode) return;
+
+    // Security: Only host can clear waypoints
+    const party = partyManager.parties[partyCode];
+    if (party && party.creator === partyManager.getUser(socket.id)) {
+      partyManager.clearWaypoints(socket.id);
+      logger.info(`扫 WAYPOINTS cleared by host ${party.creator} in ${partyCode}`);
+      io.to(partyCode).emit("waypoints-cleared");
+    } else {
+      socket.emit("partyError", "Only the host can clear waypoints");
     }
   });
 

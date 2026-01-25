@@ -7,6 +7,8 @@ class PartyManager {
         this.userParty = {};      // socket.id -> partyCode
         this.userLocations = {};  // socket.id -> { latitude, longitude }
         this.users = {};          // socket.id -> username
+        this.sosUsers = {};       // partyCode -> Set of socket.ids in SOS
+        this.waypoints = {};      // partyCode -> Array of { lat, lng, label, id }
     }
 
     registerUser(socketId, username) {
@@ -118,7 +120,73 @@ class PartyManager {
             partyClosed = true;
         }
 
+        // Cleanup SOS state if exists
+        if (this.sosUsers[code]) {
+            this.sosUsers[code].delete(socketId);
+            if (this.sosUsers[code].size === 0) delete this.sosUsers[code];
+        }
+
         return { partyCode: code, partyClosed, remainingMembers: this.parties[code]?.members || [] };
+    }
+
+    setSOS(socketId, status) {
+        const partyCode = this.userParty[socketId];
+        if (!partyCode) return null;
+
+        if (!this.sosUsers[partyCode]) {
+            this.sosUsers[partyCode] = new Set();
+        }
+
+        if (status) {
+            this.sosUsers[partyCode].add(socketId);
+        } else {
+            this.sosUsers[partyCode].delete(socketId);
+            if (this.sosUsers[partyCode].size === 0) delete this.sosUsers[partyCode];
+        }
+
+        return { partyCode, sosUsers: Array.from(this.sosUsers[partyCode] || []) };
+    }
+
+    getSOSUsers(partyCode) {
+        return Array.from(this.sosUsers[partyCode] || []);
+    }
+
+    // --- WAYPOINTS ---
+    addWaypoint(socketId, lat, lng, label = "Meeting Point") {
+        const partyCode = this.userParty[socketId];
+        if (!partyCode) return null;
+
+        if (!this.waypoints[partyCode]) {
+            this.waypoints[partyCode] = [];
+        }
+
+        const waypoint = {
+            id: uuidv4().slice(0, 8),
+            lat,
+            lng,
+            label,
+            createdBy: this.users[socketId]
+        };
+
+        this.waypoints[partyCode].push(waypoint);
+        // Limit to 10 waypoints to prevent clutter
+        if (this.waypoints[partyCode].length > 10) {
+            this.waypoints[partyCode].shift();
+        }
+
+        return { partyCode, waypoint, allWaypoints: this.waypoints[partyCode] };
+    }
+
+    getWaypoints(partyCode) {
+        return this.waypoints[partyCode] || [];
+    }
+
+    clearWaypoints(socketId) {
+        const partyCode = this.userParty[socketId];
+        if (!partyCode) return null;
+
+        this.waypoints[partyCode] = [];
+        return partyCode;
     }
 
     kickUser(creatorSocketId, targetSocketId) {

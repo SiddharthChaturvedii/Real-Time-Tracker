@@ -77,9 +77,9 @@ body::before {
   inset: 0;
 
   background:
-    radial-gradient(circle at 20% 30%, rgba(0,255,255,.28), transparent 40%),
-    radial-gradient(circle at 80% 65%, rgba(255,0,255,.25), transparent 45%),
-    radial-gradient(circle at 50% 85%, rgba(0,200,255,.25), transparent 40%),
+    radial-gradient(circle at 20% 30%, rgba(0, 255, 255, .28), transparent 40%),
+    radial-gradient(circle at 80% 65%, rgba(255, 0, 255, .25), transparent 45%),
+    radial-gradient(circle at 50% 85%, rgba(0, 200, 255, .25), transparent 40%),
     linear-gradient(180deg, #050b18 0%, #070d1a 60%, #020617 100%);
 
   filter: blur(85px);
@@ -89,14 +89,19 @@ body::before {
 
 /* Soft ambient motion */
 @keyframes floaty {
-  0%   { transform: translateY(-25px) translateX(-10px); }
-  100% { transform: translateY(25px) translateX(10px); }
+  0% {
+    transform: translateY(-25px) translateX(-10px);
+  }
+
+  100% {
+    transform: translateY(25px) translateX(10px);
+  }
 }
 
 /* ========= OPTIONAL GLASS EFFECT SECTIONS ========= */
 .glass {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(18px);
   border-radius: 16px;
 }
@@ -104,16 +109,31 @@ body::before {
 
 
 /* ========= ANIMATION HELPERS ========= */
-.reveal { opacity: 0; transform: translateY(30px); }
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+}
 
 /* Pulse tool — reusable */
 @keyframes pulse {
-  0% { transform: scale(1); opacity: .25 }
-  50% { transform: scale(1.15); opacity: .4 }
-  100% { transform: scale(1); opacity: .25 }
+  0% {
+    transform: scale(1);
+    opacity: .25
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: .4
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: .25
+  }
 }
 
 @theme inline {
+  --breakpoint-xs: 400px;
 
   --radius-sm: calc(var(--radius) - 4px);
 
@@ -261,6 +281,7 @@ body::before {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
