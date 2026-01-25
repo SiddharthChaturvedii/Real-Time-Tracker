@@ -6,11 +6,11 @@ import gsap from "gsap";
 import ScrollTrigger from "gsap/ScrollTrigger";
 import MiniMapDemo from "../components/MiniMapDemo";
 import { GlowingEffect } from "../components/ui/glowing-effect";
-import { Footerdemo } from "../components/ui/footer-section";
+import Footerdemo from "../components/ui/footer-section";
 import { Switch } from "../components/ui/switch";
 import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -44,55 +44,44 @@ export default function Home() {
   }, []);
 
   return (
-    <main className={`transition-colors duration-700 ${isDarkMode ? "bg-black text-white" : "bg-white text-black"} min-h-screen relative`}>
+    <main className="transition-colors duration-700 bg-black text-white min-h-screen relative">
       {/* Theme Toggle Top Left */}
       <div className="fixed top-6 left-6 z-[1000] flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-xl transition-all hover:scale-105 group">
-        <Sun className={`h-4 w-4 transition-colors ${isDarkMode ? "text-white/30" : "text-orange-500"}`} />
+        <Sun className={`h-4 w-4 transition-colors ${isDarkMode ? "text-white/30" : "text-yellow-400"}`} />
         <Switch
           id="global-dark-mode"
           checked={isDarkMode}
           onCheckedChange={setIsDarkMode}
           className="data-[state=checked]:bg-cyan-600"
         />
-        <Moon className={`h-4 w-4 transition-colors ${isDarkMode ? "text-cyan-400" : "text-black/30"}`} />
+        <Moon className={`h-4 w-4 transition-colors ${isDarkMode ? "text-cyan-400" : "text-white/30"}`} />
       </div>
 
       {/* Animated Background */}
       <div className="fixed inset-0 -z-10 transition-opacity duration-700">
         {!isDarkMode ? (
-          /* Bright Mode Gradient */
-          <svg
-            className="w-full h-full blur-3xl opacity-50"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#00fff2" />
-                <stop offset="50%" stopColor="#ff00ff" />
-                <stop offset="100%" stopColor="#00b3ff" />
-              </linearGradient>
-            </defs>
-
-            <motion.circle
-              cx="30%"
-              cy="30%"
-              r="200"
-              fill="url(#grad1)"
-              animate={{ cx: "70%", cy: "60%" }}
-              transition={{ duration: 10, repeat: Infinity, repeatType: "reverse" }}
+          /* Bright Mode: Original Vibrant Dark Gradient */
+          <div className="w-full h-full relative overflow-hidden bg-[#050b18]">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#050b18] via-[#070d1a] to-[#020617]" />
+            <motion.div
+              animate={{
+                x: ["-10%", "10%"],
+                y: ["-10%", "10%"]
+              }}
+              transition={{ duration: 20, repeat: Infinity, repeatType: "reverse" }}
+              className="absolute top-[10%] left-[10%] w-[60%] h-[60%] bg-cyan-500/20 rounded-full blur-[120px]"
             />
-
-            <motion.circle
-              cx="70%"
-              cy="50%"
-              r="250"
-              fill="url(#grad1)"
-              animate={{ cx: "20%", cy: "70%" }}
-              transition={{ duration: 12, repeat: Infinity, repeatType: "reverse" }}
+            <motion.div
+              animate={{
+                x: ["10%", "-10%"],
+                y: ["10%", "-10%"]
+              }}
+              transition={{ duration: 25, repeat: Infinity, repeatType: "reverse" }}
+              className="absolute bottom-[10%] right-[10%] w-[60%] h-[60%] bg-purple-500/20 rounded-full blur-[120px]"
             />
-          </svg>
+          </div>
         ) : (
-          /* Dark Mode Bubbles */
+          /* Dark Mode: Pure Black with Minimalist Bubbles */
           <div className="w-full h-full bg-black relative overflow-hidden">
             <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-cyan-900/10 rounded-full blur-[120px] animate-pulse" />
             <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[120px] animate-pulse" />

@@ -229,4 +229,4 @@ function Footerdemo({ isDarkMode }: FooterProps) {
     )
 }
 
-export { Footerdemo }
+export default Footerdemo;

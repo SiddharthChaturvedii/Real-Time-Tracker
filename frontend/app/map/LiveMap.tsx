@@ -94,13 +94,19 @@ export default function LiveMap({
       center: [20, 0],
       zoom: 3,
       attributionControl: false,
-      zoomControl: false // Hide default zoom for cleaner UI
+      zoomControl: false
     });
 
-    L.tileLayer("https://{s}.tile.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
-    }).addTo(map);
+    try {
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
+      }).addTo(map);
+    } catch (e) {
+      console.warn("Failed to load map tiles, falling back to OSM", e);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    }
 
     mapRef.current = map;
     setTimeout(() => map.invalidateSize(), 200);
@@ -238,7 +244,7 @@ export default function LiveMap({
   }
 
   function updateMarker(id: string, name: string, lat: number, lng: number) {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !id || lat === undefined || lng === undefined || isNaN(lat) || isNaN(lng)) return;
 
     let finalLat = lat;
     let finalLng = lng;
