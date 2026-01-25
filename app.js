@@ -28,6 +28,8 @@ const io = require("socket.io")(server, {
 // =============================
 // SOCKET
 // =============================
+// Note: All state (users, parties, locations) is managed by PartyManager.
+// Do not introduce local maps (like users = {}) here to avoid desync.
 io.on("connection", (socket) => {
   if (socket.recovered) {
     logger.info(`Socket recovered: ${socket.id}`);
@@ -172,10 +174,11 @@ io.on("connection", (socket) => {
 
   // ---------- SOS ----------
   socket.on("sos-signal", () => {
-    const code = userParty[socket.id];
+    const code = partyManager.getUserParty(socket.id);
     if (code) {
-      logger.info(`🚨 SOS SIGNAL from ${users[socket.id]} in party ${code}`);
-      io.to(code).emit("sos-alert", users[socket.id]);
+      const username = partyManager.getUser(socket.id);
+      logger.info(`🚨 SOS SIGNAL from ${username} in party ${code}`);
+      io.to(code).emit("sos-alert", username);
     }
   });
 

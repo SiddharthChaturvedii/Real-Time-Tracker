@@ -18,7 +18,17 @@ class PartyManager {
         return this.users[socketId] || "Guest";
     }
 
+    getUserParty(socketId) {
+        return this.userParty[socketId];
+    }
+
     createParty(socketId, username) {
+        // Safeguard: User must not be in another party
+        if (this.userParty[socketId]) {
+            logger.info(`Auto-leaving user ${socketId} from previous party before create`);
+            this.leaveParty(socketId);
+        }
+
         const partyCode = uuidv4().slice(0, 6).toUpperCase();
         this.parties[partyCode] = {
             creator: username, // Store creator name for notifications
@@ -35,6 +45,12 @@ class PartyManager {
     }
 
     joinParty(socketId, username, partyCode) {
+        // Safeguard: User must not be in another party
+        if (this.userParty[socketId]) {
+            logger.info(`Auto-leaving user ${socketId} from previous party before join`);
+            this.leaveParty(socketId);
+        }
+
         const party = this.parties[partyCode];
         if (!party) return { error: "Party does not exist" };
 
