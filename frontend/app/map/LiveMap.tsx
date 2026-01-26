@@ -144,7 +144,28 @@ export default function LiveMap({
           username,
         });
       }
-    }, (err) => console.error("GPS Error:", err), { enableHighAccuracy: true });
+    }, (err) => {
+      // User-friendly GPS error handling
+      switch (err.code) {
+        case err.PERMISSION_DENIED:
+          addToast("📍 Location access denied. Please enable location in your browser settings.", 'error');
+          break;
+        case err.POSITION_UNAVAILABLE:
+          addToast("📍 Location unavailable. Please check your GPS/network.", 'error');
+          break;
+        case err.TIMEOUT:
+          addToast("📍 Location request timed out. Retrying...", 'info');
+          break;
+        default:
+          addToast("📍 Unable to get your location.", 'error');
+      }
+      console.error("GPS Error:", err);
+    }, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 5000
+    });
+
 
     /* ---------- SOCKET ---------- */
     socket.on("receive-location", (data: LocationPayload) => {
@@ -156,8 +177,20 @@ export default function LiveMap({
       removeUserFromMap(id);
     });
 
+    const handleManualCenter = () => {
+      centeredRef.current = false; // Reset so next GPS fix re-centers
+      // Trigger a direct re-center if we have last pos
+      const lastPos = markersRef.current[socket.id || ""]?.getLatLng();
+      if (lastPos && mapRef.current) {
+        mapRef.current.setView(lastPos, 16);
+        centeredRef.current = true;
+      }
+    };
+    window.addEventListener('center-map', handleManualCenter);
+
     return () => {
       navigator.geolocation.clearWatch(watchId);
+      window.removeEventListener('center-map', handleManualCenter);
       socket.off("receive-location");
       socket.off("user-disconnected");
       mapRef.current?.remove();
@@ -169,14 +202,11 @@ export default function LiveMap({
   useEffect(() => {
     if (!mapRef.current) return;
 
-    if (tileLayerRef.current) {
-      mapRef.current.removeLayer(tileLayerRef.current);
-    }
+    const url = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
-    tileLayerRef.current = L.tileLayer(
-      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      { attribution: '&copy; OpenStreetMap' }
-    ).addTo(mapRef.current);
+    tileLayerRef.current = L.tileLayer(url, {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(mapRef.current);
 
     tileLayerRef.current.on('tileerror', () => {
       console.warn('Tile load error');

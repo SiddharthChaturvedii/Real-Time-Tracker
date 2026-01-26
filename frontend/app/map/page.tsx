@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { socket } from "@/lib/socket";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { Menu, X, Users, LogOut, Copy, Trash2, Info, Phone, ShieldAlert, Heart, Siren, CheckCircle2, Navigation, AlertCircle } from "lucide-react";
-import { getHelplinesByLocation, Helpline } from "@/lib/helplines";
+import { Menu, X, Users, LogOut, Copy, Trash2, Info, ShieldAlert, Heart, Siren, CheckCircle2, AlertCircle, Sun, Moon, Navigation, Phone } from "lucide-react";
+import { getHelplinesByLocation } from "@/lib/helplines";
 
 const LiveMap = dynamic(() => import("./LiveMap"), { ssr: false });
 
@@ -43,15 +43,16 @@ export default function MapPage() {
 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapTheme, setMapTheme] = useState<'dark' | 'bright'>('dark');
 
   const inSOS = sosUsers.includes(socket.id || "");
   const someoneInSOS = sosUsers.length > 0;
 
   const addToast = (message: string, type: Exclude<Toast['type'], undefined> = 'info') => {
     const id = Math.random().toString(36).substring(7);
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts((prev: Toast[]) => [...prev, { id, message, type }]);
     setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
+      setToasts((prev: Toast[]) => prev.filter(t => t.id !== id));
     }, 4000);
   };
 
@@ -293,7 +294,7 @@ export default function MapPage() {
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => setMapTheme(prev => prev === 'dark' ? 'bright' : 'dark')}
+            onClick={() => setMapTheme((prev: 'dark' | 'bright') => prev === 'dark' ? 'bright' : 'dark')}
             className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
             title={mapTheme === 'dark' ? 'Switch to Bright Map' : 'Switch to Dark Map'}
           >
@@ -353,6 +354,21 @@ export default function MapPage() {
               </motion.button>
             </div>
           )}
+
+          {/* CENTER MAP BUTTON */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              // We'll use an event or state to tell LiveMap to re-center
+              window.dispatchEvent(new CustomEvent('center-map'));
+              addToast("Centering map...", 'info');
+            }}
+            className="p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all text-cyan-400"
+            title="Center on me"
+          >
+            <Navigation size={22} className="rotate-45" />
+          </motion.button>
         </div>
       </div>
 
@@ -565,6 +581,7 @@ export default function MapPage() {
           sosUsers={sosUsers}
           waypoints={waypoints}
           addToast={addToast}
+          mapTheme={mapTheme}
         />
       </div>
 

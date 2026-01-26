@@ -33,30 +33,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="bg-[#050b18] text-white min-h-screen relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 -z-10">
-        <div className="w-full h-full relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#050b18] via-[#070d1a] to-[#020617]" />
-          <motion.div
-            animate={{
-              x: ["-10%", "10%"],
-              y: ["-10%", "10%"]
-            }}
-            transition={{ duration: 20, repeat: Infinity, repeatType: "reverse" }}
-            className="absolute top-[10%] left-[10%] w-[60%] h-[60%] bg-cyan-500/20 rounded-full blur-[120px]"
-          />
-          <motion.div
-            animate={{
-              x: ["10%", "-10%"],
-              y: ["10%", "-10%"]
-            }}
-            transition={{ duration: 25, repeat: Infinity, repeatType: "reverse" }}
-            className="absolute bottom-[10%] right-[10%] w-[60%] h-[60%] bg-purple-500/20 rounded-full blur-[120px]"
-          />
-        </div>
-      </div>
-
+    <main className="text-white min-h-screen relative overflow-hidden">
       {/* HERO */}
       <section className="flex flex-col items-center justify-center min-h-screen text-center px-6">
         <motion.h1
