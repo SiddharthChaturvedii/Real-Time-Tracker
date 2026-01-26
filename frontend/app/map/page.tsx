@@ -43,7 +43,6 @@ export default function MapPage() {
 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [mapTheme, setMapTheme] = useState<'dark' | 'bright'>('dark');
 
   const inSOS = sosUsers.includes(socket.id || "");
   const someoneInSOS = sosUsers.length > 0;
@@ -289,17 +288,6 @@ export default function MapPage() {
               )}
             </AnimatePresence>
           </div>
-
-          {/* THEME TOGGLE */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setMapTheme((prev: 'dark' | 'bright') => prev === 'dark' ? 'bright' : 'dark')}
-            className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
-            title={mapTheme === 'dark' ? 'Switch to Bright Map' : 'Switch to Dark Map'}
-          >
-            {mapTheme === 'dark' ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} className="text-cyan-400" />}
-          </motion.button>
         </div>
 
         <div className="flex items-center gap-3">
@@ -581,7 +569,6 @@ export default function MapPage() {
           sosUsers={sosUsers}
           waypoints={waypoints}
           addToast={addToast}
-          mapTheme={mapTheme}
         />
       </div>
 
