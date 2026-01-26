@@ -44,6 +44,8 @@ export default function MapPage() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showPermissionGate, setShowPermissionGate] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const inSOS = sosUsers.includes(socket.id || "");
   const someoneInSOS = sosUsers.length > 0;
@@ -62,27 +64,29 @@ export default function MapPage() {
       return;
     }
 
-    // Safety timeout: If browser hangs, hide gate after 8s
-    const timeoutId = setTimeout(() => {
-      setShowPermissionGate(false);
-      addToast("Connection slow. Map initializing...", "info");
-    }, 8000);
+    setIsLocating(true);
+    setLocationError(null);
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        clearTimeout(timeoutId);
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setShowPermissionGate(false);
+        setIsLocating(false);
       },
       (err) => {
-        clearTimeout(timeoutId);
+        setIsLocating(false);
         console.error("Location error", err);
-        setShowPermissionGate(false); // Hide gate even on error so user can see map
         if (err.code === err.PERMISSION_DENIED) {
+          setLocationError("GPS Permission Denied");
           addToast("Permission denied. Tracking disabled.", "error");
+        } else if (err.code === err.TIMEOUT) {
+          setLocationError("GPS Request Timed Out");
+          addToast("Location request timed out. Please retry.", "error");
+        } else {
+          setLocationError("Unable to fetch location");
         }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 
@@ -260,9 +264,9 @@ export default function MapPage() {
               initial={{ opacity: 0, x: 20, scale: 0.9, filter: "blur(10px)" }}
               animate={{ opacity: 1, x: 0, scale: 1, filter: "blur(0px)" }}
               exit={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
-              className={`backdrop-blur-2xl border px-5 py-4 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] flex items-center gap-4 min-w-[260px] ${toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-100' :
-                toast.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-100' :
-                  'bg-white/5 border-white/10 text-white'
+              className={`backdrop-blur-3xl border px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-4 min-w-[280px] ${toast.type === 'error' ? 'bg-red-950/90 border-red-500/20 text-red-100' :
+                toast.type === 'success' ? 'bg-green-950/90 border-green-500/20 text-green-100' :
+                  'bg-zinc-900/95 border-white/10 text-white'
                 }`}
             >
               {toast.type === 'error' ? <AlertCircle size={22} className="text-red-400" /> :
@@ -320,13 +324,26 @@ export default function MapPage() {
                 </p>
 
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: isLocating ? 1 : 1.02 }}
+                  whileTap={{ scale: isLocating ? 1 : 0.98 }}
                   onClick={requestLocation}
-                  className="w-full py-5 bg-white text-black rounded-2xl font-black text-xl shadow-xl shadow-white/5 transition-all uppercase tracking-tighter"
+                  disabled={isLocating}
+                  className={`w-full py-5 rounded-2xl font-black text-xl shadow-xl transition-all uppercase tracking-tighter ${isLocating ? 'bg-white/10 text-white/20 cursor-wait' : 'bg-white text-black'
+                    }`}
                 >
-                  Allow Access
+                  {isLocating ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="w-5 h-5 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+                      Searching...
+                    </div>
+                  ) : locationError ? "Retry Connection" : "Allow Access"}
                 </motion.button>
+
+                {locationError && (
+                  <p className="mt-4 text-red-400 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">
+                    {locationError}
+                  </p>
+                )}
               </div>
             </motion.div>
           </motion.div>
