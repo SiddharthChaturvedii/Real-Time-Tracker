@@ -22,16 +22,17 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "LiveTrack",
   description: "Realtime party location tracking",
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   other: {
     'apple-mobile-web-app-capable': 'yes',
     'mobile-web-app-capable': 'yes',
   }
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 

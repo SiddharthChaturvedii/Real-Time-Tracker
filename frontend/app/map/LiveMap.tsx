@@ -50,13 +50,15 @@ export default function LiveMap({
   members,
   sosUsers = [],
   waypoints = [],
-  addToast
+  addToast,
+  onLocationUpdate
 }: {
   username: string;
   members: Array<{ id: string; username: string }>;
   sosUsers?: string[];
   waypoints?: Array<{ id: string, lat: number, lng: number, label: string }>;
   addToast: (msg: string, type: 'info' | 'error' | 'success') => void;
+  onLocationUpdate?: (lat: number, lng: number) => void;
 }) {
   const mapRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -143,6 +145,9 @@ export default function LiveMap({
           longitude,
           username,
         });
+        if (onLocationUpdate) {
+          onLocationUpdate(latitude, longitude);
+        }
       }
     }, (err) => {
       // User-friendly GPS error handling

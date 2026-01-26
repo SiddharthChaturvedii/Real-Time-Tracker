@@ -44,7 +44,6 @@ export default function MapPage() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showPermissionGate, setShowPermissionGate] = useState(false);
-  const watchIdRef = useRef<number | null>(null);
 
   const inSOS = sosUsers.includes(socket.id || "");
   const someoneInSOS = sosUsers.length > 0;
@@ -63,28 +62,28 @@ export default function MapPage() {
       return;
     }
 
+    // Safety timeout: If browser hangs, hide gate after 8s
+    const timeoutId = setTimeout(() => {
+      setShowPermissionGate(false);
+      addToast("Connection slow. Map initializing...", "info");
+    }, 8000);
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        clearTimeout(timeoutId);
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setShowPermissionGate(false);
-        startTracking();
       },
       (err) => {
-        console.error("Permission denied", err);
-        addToast("Permission denied. Please enable location in settings.", "error");
+        clearTimeout(timeoutId);
+        console.error("Location error", err);
+        setShowPermissionGate(false); // Hide gate even on error so user can see map
+        if (err.code === err.PERMISSION_DENIED) {
+          addToast("Permission denied. Tracking disabled.", "error");
+        }
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
-  };
-
-  const startTracking = () => {
-    if (watchIdRef.current) return;
-    const id = navigator.geolocation.watchPosition(
-      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      err => console.error(err),
-      { enableHighAccuracy: true }
-    );
-    watchIdRef.current = id;
   };
 
   const playSiren = () => {
@@ -220,22 +219,13 @@ export default function MapPage() {
     // Check permissions
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-        if (result.state === 'granted') {
-          startTracking();
-        } else {
+        if (result.state !== 'granted') {
           setShowPermissionGate(true);
         }
       });
     } else {
-      // Fallback for browsers that don't support permissions.query
       setShowPermissionGate(true);
     }
-
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-    };
   }, []);
 
   const handleJoinParty = () => {
@@ -483,22 +473,25 @@ export default function MapPage() {
                 </motion.button>
               </div>
 
-              <div className="grid grid-cols-2 gap-5 flex-1 overflow-y-auto pr-3 custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                 {helplines.map((help, idx) => (
                   <motion.a
                     key={idx}
                     href={`tel:${help.number}`}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: idx * 0.04, ...springConfig }}
-                    whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.07)" }}
-                    whileTap={{ scale: 0.97 }}
-                    className={`flex flex-col items-center justify-center p-8 rounded-[2.5rem] border transition-all ${idx === 0 ? 'bg-red-600/30 border-red-500/50 col-span-2 py-10 shadow-lg shadow-red-900/20' : 'bg-white/5 border-white/5'}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05, ...springConfig }}
+                    whileHover={{ scale: 1.02, backgroundColor: "rgba(255,255,255,0.08)" }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`flex flex-col items-center justify-center p-6 rounded-[2rem] border transition-all ${idx === 0
+                      ? 'bg-red-600/30 border-red-500/50 sm:col-span-2 py-8 shadow-2xl shadow-red-900/30'
+                      : 'bg-white/5 border-white/5 h-44 sm:h-auto'
+                      }`}
                   >
-                    <span className="text-5xl mb-4 filter drop-shadow-[0_4px_12px_rgba(220,38,38,0.4)]">{help.icon}</span>
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.35em] mb-2">{help.label}</span>
-                    <span className="text-xl sm:text-3xl font-black text-white tracking-[0.15em]">{help.number}</span>
-                    <Phone size={16} className="mt-4 text-red-500/50" />
+                    <span className="text-4xl sm:text-5xl mb-3 filter drop-shadow-[0_4px_12px_rgba(220,38,38,0.4)]">{help.icon}</span>
+                    <span className="text-[9px] sm:text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-1">{help.label}</span>
+                    <span className="text-xl sm:text-3xl font-black text-white tracking-widest">{help.number}</span>
+                    <Phone size={14} className="mt-3 text-red-500/40" />
                   </motion.a>
                 ))}
               </div>
@@ -656,6 +649,7 @@ export default function MapPage() {
           sosUsers={sosUsers}
           waypoints={waypoints}
           addToast={addToast}
+          onLocationUpdate={(lat, lng) => setUserLocation({ lat, lng })}
         />
       </div>
 
