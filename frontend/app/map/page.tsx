@@ -43,6 +43,8 @@ export default function MapPage() {
 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showPermissionGate, setShowPermissionGate] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
 
   const inSOS = sosUsers.includes(socket.id || "");
   const someoneInSOS = sosUsers.length > 0;
@@ -53,6 +55,36 @@ export default function MapPage() {
     setTimeout(() => {
       setToasts((prev: Toast[]) => prev.filter(t => t.id !== id));
     }, 4000);
+  };
+
+  const requestLocation = () => {
+    if (!navigator.geolocation) {
+      addToast("Geolocation is not supported by your browser", "error");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setShowPermissionGate(false);
+        startTracking();
+      },
+      (err) => {
+        console.error("Permission denied", err);
+        addToast("Permission denied. Please enable location in settings.", "error");
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  const startTracking = () => {
+    if (watchIdRef.current) return;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      err => console.error(err),
+      { enableHighAccuracy: true }
+    );
+    watchIdRef.current = id;
   };
 
   const playSiren = () => {
@@ -185,13 +217,25 @@ export default function MapPage() {
     setUsername(name || "Guest");
     socket.emit("register-user", name || "Guest");
 
-    // Watch location for helplines
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      err => console.error(err),
-      { enableHighAccuracy: true }
-    );
-    return () => navigator.geolocation.clearWatch(watchId);
+    // Check permissions
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        if (result.state === 'granted') {
+          startTracking();
+        } else {
+          setShowPermissionGate(true);
+        }
+      });
+    } else {
+      // Fallback for browsers that don't support permissions.query
+      setShowPermissionGate(true);
+    }
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
   }, []);
 
   const handleJoinParty = () => {
@@ -253,6 +297,49 @@ export default function MapPage() {
               animation: 'pulse 2s infinite ease-in-out'
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* PERMISSION GATE */}
+      <AnimatePresence>
+        {showPermissionGate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[2500] bg-black/60 backdrop-blur-2xl flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={springConfig}
+              className="max-w-md w-full bg-[#050505]/90 backdrop-blur-3xl border border-white/10 p-10 rounded-[3rem] shadow-[0_32px_64px_rgba(0,0,0,0.5)] text-center relative overflow-hidden"
+            >
+              {/* Decorative Glow */}
+              <div className="absolute -top-24 -left-24 w-48 h-48 bg-cyan-600/20 rounded-full blur-[80px]" />
+              <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-purple-600/20 rounded-full blur-[80px]" />
+
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-3xl flex items-center justify-center mb-8 shadow-2xl shadow-cyan-500/20">
+                  <Navigation size={38} className="text-white rotate-45" />
+                </div>
+
+                <h2 className="text-3xl font-black tracking-tighter mb-4">Location Required</h2>
+                <p className="text-white/40 text-sm leading-relaxed mb-10 font-medium italic">
+                  To show your position to friends and enable SOS signals, LiveTrack needs your GPS permission.
+                </p>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={requestLocation}
+                  className="w-full py-5 bg-white text-black rounded-2xl font-black text-xl shadow-xl shadow-white/5 transition-all uppercase tracking-tighter"
+                >
+                  Allow Access
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -583,6 +670,6 @@ export default function MapPage() {
           100% { opacity: 0.4; }
         }
       `}</style>
-    </div>
+    </div >
   );
 }
