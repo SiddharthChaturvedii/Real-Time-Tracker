@@ -131,7 +131,7 @@ function Footerdemo({ isDarkMode }: FooterProps) {
                                                     className="rounded-3xl h-16 w-16 border-2 hover:bg-current/5 hover:scale-110 transition-all duration-300"
                                                     onClick={() => window.open("https://www.instagram.com/siddharthhhhh._/?hl=en", "_blank")}
                                                 >
-                                                    <Instagram className="h-8 w-8" />
+                                                    <Instagram className="h-8 w-8 text-current" strokeWidth={2.5} />
                                                 </Button>
                                             </TooltipTrigger>
                                             <TooltipContent className="bg-black text-white border-white/10">
@@ -149,7 +149,7 @@ function Footerdemo({ isDarkMode }: FooterProps) {
                                                     className="rounded-3xl h-16 w-16 border-2 hover:bg-current/5 hover:scale-110 transition-all duration-300"
                                                     onClick={() => window.open("https://www.linkedin.com/in/siddharth-chaturvedi-75772b250", "_blank")}
                                                 >
-                                                    <Linkedin className="h-8 w-8" />
+                                                    <Linkedin className="h-8 w-8 text-current" strokeWidth={2.5} />
                                                 </Button>
                                             </TooltipTrigger>
                                             <TooltipContent className="bg-black text-white border-white/10">
@@ -167,7 +167,7 @@ function Footerdemo({ isDarkMode }: FooterProps) {
                                                     className="rounded-3xl h-16 w-16 border-2 hover:bg-current/5 hover:scale-110 transition-all duration-300"
                                                     onClick={() => window.open("https://github.com/SiddharthChaturvedii", "_blank")}
                                                 >
-                                                    <Github className="h-8 w-8" />
+                                                    <Github className="h-8 w-8 text-current" strokeWidth={2.5} />
                                                 </Button>
                                             </TooltipTrigger>
                                             <TooltipContent className="bg-black text-white border-white/10">

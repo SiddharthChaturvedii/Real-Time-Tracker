@@ -351,8 +351,8 @@ export default function MapPage() {
       </AnimatePresence>
 
       {/* NAVBAR / EMERGENCY HEADER */}
-      <div className={`h-16 flex items-center px-6 border-b transition-all duration-700 z-[1000] justify-between ${someoneInSOS ? 'bg-red-950/50 border-red-500/40 shadow-[0_0_50px_rgba(220,38,38,0.25)]' : 'bg-black/40 border-white/5'} backdrop-blur-3xl`}>
-        <div className="flex items-center gap-4">
+      <div className={`h-16 flex items-center px-3 sm:px-6 border-b transition-all duration-700 z-[1000] justify-between ${someoneInSOS ? 'bg-red-950/50 border-red-500/40 shadow-[0_0_50px_rgba(220,38,38,0.25)]' : 'bg-black/40 border-white/5'} backdrop-blur-3xl`}>
+        <div className="flex items-center gap-2 sm:gap-4">
           <motion.button
             whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.15)" }}
             whileTap={{ scale: 0.9 }}
@@ -365,7 +365,7 @@ export default function MapPage() {
           <div className="flex flex-col text-left">
             <motion.h1
               layout
-              className={`font-black text-lg sm:text-2xl tracking-tighter ${someoneInSOS ? 'text-white' : 'bg-gradient-to-br from-blue-400 via-cyan-300 to-indigo-400 bg-clip-text text-transparent'}`}
+              className={`font-black text-base sm:text-2xl tracking-tighter ${someoneInSOS ? 'text-white' : 'bg-gradient-to-br from-blue-400 via-cyan-300 to-indigo-400 bg-clip-text text-transparent'}`}
             >
               {someoneInSOS ? "EMERGENCY" : "LiveTrack"}
             </motion.h1>
@@ -384,7 +384,7 @@ export default function MapPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {partyCode ? (
             <div className="flex items-center gap-2">
               {inSOS ? (
@@ -421,7 +421,7 @@ export default function MapPage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white text-black px-6 py-2.5 rounded-2xl text-sm font-black shadow-2xl transition-all"
+                className="bg-white text-black px-4 sm:px-6 py-2.5 rounded-2xl text-[10px] sm:text-sm font-black shadow-2xl transition-all"
                 onClick={() => socket.emit("createParty", username)}
               >
                 Create
@@ -429,7 +429,7 @@ export default function MapPage() {
               <motion.button
                 whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.15)" }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white/5 text-white px-6 py-2.5 rounded-2xl text-sm font-bold border border-white/10 backdrop-blur-md transition-all"
+                className="bg-white/5 text-white px-4 sm:px-6 py-2.5 rounded-2xl text-[10px] sm:text-sm font-bold border border-white/10 backdrop-blur-md transition-all"
                 onClick={() => handleJoinParty()}
               >
                 Join
@@ -437,16 +437,15 @@ export default function MapPage() {
             </div>
           )}
 
-          {/* CENTER MAP BUTTON */}
+          {/* CENTER MAP BUTTON (Desktop Only) */}
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => {
-              // We'll use an event or state to tell LiveMap to re-center
               window.dispatchEvent(new CustomEvent('center-map'));
               addToast("Centering map...", 'info');
             }}
-            className="p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all text-cyan-400"
+            className="hidden sm:flex p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all text-cyan-400"
             title="Center on me"
           >
             <Navigation size={22} className="rotate-45" />
@@ -668,6 +667,20 @@ export default function MapPage() {
           addToast={addToast}
           onLocationUpdate={(lat, lng) => setUserLocation({ lat, lng })}
         />
+
+        {/* FLOATING CENTER BUTTON (Mobile Only) */}
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('center-map'));
+            addToast("Centering...", 'info');
+          }}
+          className="sm:hidden absolute bottom-24 right-6 z-[500] p-4 bg-zinc-900/90 border border-white/10 rounded-full shadow-2xl text-cyan-400 backdrop-blur-xl active:bg-cyan-500/20"
+        >
+          <Navigation size={24} className="rotate-45" />
+        </motion.button>
       </div>
 
       <style jsx global>{`
