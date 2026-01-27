@@ -252,7 +252,7 @@ export default function MapPage() {
   const helplines = getHelplinesByLocation(userLocation?.lat, userLocation?.lng);
 
   return (
-    <div className="h-screen w-screen flex flex-col relative overflow-hidden font-sans selection:bg-cyan-500/30 transition-colors duration-500 bg-[#0a0f1a] text-white">
+    <div className="fixed inset-0 h-[100dvh] w-screen flex flex-col overflow-hidden font-sans selection:bg-cyan-500/30 transition-colors duration-500 bg-[#0a0f1a] text-white">
 
       {/* TOAST CONTAINER */}
       <div className="absolute bottom-6 right-6 z-[2000] flex flex-col gap-3 pointer-events-none">
@@ -351,7 +351,7 @@ export default function MapPage() {
       </AnimatePresence>
 
       {/* NAVBAR / EMERGENCY HEADER */}
-      <div className={`h-16 flex items-center px-3 sm:px-6 border-b transition-all duration-700 z-[1000] justify-between ${someoneInSOS ? 'bg-red-950/50 border-red-500/40 shadow-[0_0_50px_rgba(220,38,38,0.25)]' : 'bg-black/40 border-white/5'} backdrop-blur-3xl`}>
+      <div className={`h-16 flex-shrink-0 flex items-center px-3 sm:px-6 border-b transition-all duration-700 z-[1000] justify-between ${someoneInSOS ? 'bg-red-950/50 border-red-500/40 shadow-[0_0_50px_rgba(220,38,38,0.25)]' : 'bg-black/40 border-white/5'} backdrop-blur-3xl touch-none`}>
         <div className="flex items-center gap-2 sm:gap-4">
           <motion.button
             whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.15)" }}
@@ -469,7 +469,7 @@ export default function MapPage() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={springConfig}
-              className="absolute bottom-0 left-0 right-0 bg-[#060606]/95 backdrop-blur-[40px] border-t border-red-500/30 rounded-t-[3.5rem] z-[1700] p-10 pb-14 shadow-[0_-25px_80px_rgba(220,38,38,0.25)] max-h-[90vh] flex flex-col"
+              className="absolute bottom-0 left-0 right-0 bg-[#060606]/95 backdrop-blur-[40px] border-t border-red-500/30 rounded-t-[3.5rem] z-[1700] p-10 pb-14 shadow-[0_-25px_80px_rgba(220,38,38,0.25)] max-h-[90dvh] flex flex-col"
             >
               <div className="w-20 h-1.5 bg-white/15 rounded-full mx-auto mb-10" />
 
